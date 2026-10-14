@@ -1,0 +1,596 @@
+1
+00:00:00,700 --> 00:00:05,339
+Chào bạn! Hôm nay mình cùng mổ xẻ một paper về AI có thể giải thích được,
+
+2
+00:00:05,318 --> 00:00:06,984
+đăng ở hội nghị ICLR 2025.
+
+3
+00:00:06,964 --> 00:00:10,800
+Tên paper là Sparse Feature Circuits, tạm dịch: các mạch đặc trưng thưa.
+
+4
+00:00:10,779 --> 00:00:14,208
+Nghe thì đáng sợ, nhưng mình sẽ giải thích từng khái niệm một, trước khi dùng nó.
+
+5
+00:00:17,487 --> 00:00:21,036
+Trước hết, mô hình ngôn ngữ là gì? Đó là một chương trình đoán từ tiếp theo trong câu.
+
+6
+00:00:21,015 --> 00:00:24,876
+Ví dụ, sau câu: The boys near the teacher..., mô hình phải chọn giữa have và has.
+
+7
+00:00:24,856 --> 00:00:28,547
+Chủ ngữ là boys, số nhiều, nên đáp án đúng là have. Mô hình thường chọn đúng.
+
+8
+00:00:28,527 --> 00:00:31,403
+Nhưng câu hỏi là: bên trong nó đã làm gì để ra được quyết định đó?
+
+9
+00:00:31,384 --> 00:00:34,743
+Bên trong mô hình chỉ là hàng triệu con số chạy qua nhiều tầng. Nhìn vào đó,
+
+10
+00:00:34,722 --> 00:00:37,115
+con người chẳng hiểu gì cả. Đây gọi là vấn đề hộp đen.
+
+11
+00:00:37,095 --> 00:00:40,908
+Lĩnh vực XAI, hay AI giải thích được, cố gắng mở chiếc hộp đen này ra.
+
+12
+00:00:43,387 --> 00:00:45,712
+Một cách mở hộp đen là tìm mạch, hay circuit.
+
+13
+00:00:45,692 --> 00:00:49,615
+Mạch là một nhóm nhỏ các bộ phận bên trong mô hình, cùng các đường nối giữa chúng,
+
+14
+00:00:49,594 --> 00:00:51,328
+đủ để giải thích một hành vi cụ thể.
+
+15
+00:00:51,307 --> 00:00:53,093
+Giống như trong một thành phố khổng lồ,
+
+16
+00:00:53,073 --> 00:00:55,671
+ta chỉ cần vẽ đúng những con đường mà chiếc xe đã đi qua.
+
+17
+00:00:58,152 --> 00:01:01,795
+Các nghiên cứu trước đây vẽ mạch bằng những bộ phận thô, như neuron hay attention head.
+
+18
+00:01:01,776 --> 00:01:05,884
+Vấn đề thứ nhất: một neuron thường đa nghĩa. Cùng một neuron có thể sáng lên với con mèo,
+
+19
+00:01:05,864 --> 00:01:07,123
+với xe hơi, lẫn tiếng Pháp.
+
+20
+00:01:07,103 --> 00:01:09,956
+Vậy nên dù tìm ra mạch, ta vẫn không hiểu mạch đó đang làm gì.
+
+21
+00:01:09,936 --> 00:01:13,665
+Vấn đề thứ hai: nếu chia nhỏ ra thành đơn vị tinh hơn thì có hàng chục nghìn đơn vị.
+
+22
+00:01:13,644 --> 00:01:15,739
+Thử từng cái một thì tốn thời gian khủng khiếp.
+
+23
+00:01:15,719 --> 00:01:19,846
+Paper này giải quyết cả hai vấn đề: dùng Sparse Autoencoder để có đơn vị dễ hiểu,
+
+24
+00:01:19,825 --> 00:01:22,075
+và dùng xấp xỉ tuyến tính để tính cho nhanh.
+
+25
+00:01:24,555 --> 00:01:27,840
+Trước khi vào Sparse Autoencoder, mình ôn nhanh khái niệm vector.
+
+26
+00:01:27,819 --> 00:01:30,620
+Vector đơn giản là một danh sách các con số. Với hai con số,
+
+27
+00:01:30,600 --> 00:01:32,567
+ta vẽ nó thành một mũi tên trên mặt phẳng.
+
+28
+00:01:32,548 --> 00:01:36,456
+Hai vector có thể cộng lại: đặt mũi tên nối đuôi nhau, ta được một mũi tên mới.
+
+29
+00:01:36,436 --> 00:01:40,847
+Và ta có thể nhân vector với một số, gọi là hệ số, để kéo dài hoặc thu ngắn nó.
+
+30
+00:01:40,828 --> 00:01:45,233
+Trong mô hình ngôn ngữ, trạng thái bên trong tại mỗi từ là một vector rất dài,
+
+31
+00:01:45,213 --> 00:01:48,552
+gọi là activation, ký hiệu x. Với Pythia, nó có 512 con số.
+
+32
+00:01:51,031 --> 00:01:54,772
+Ý tưởng của Sparse Autoencoder, viết tắt là SAE, như sau.
+
+33
+00:01:54,751 --> 00:01:59,158
+Ta chuẩn bị sẵn một cuốn từ điển gồm rất nhiều vector hướng, mỗi hướng là một feature,
+
+34
+00:01:59,138 --> 00:02:00,483
+hay đặc trưng, ký hiệu vᵢ.
+
+35
+00:02:00,463 --> 00:02:05,859
+Rồi ta biểu diễn activation x thành tổng của một vài feature, mỗi cái nhân với một hệ số fᵢ.
+
+36
+00:02:05,840 --> 00:02:10,828
+Chữ sparse, nghĩa là thưa, tức là hầu hết hệ số bằng 0. Mỗi lần chỉ vài feature được bật lên.
+
+37
+00:02:10,807 --> 00:02:15,364
+Viết thành công thức: x bằng tổng các fᵢ nhân vᵢ, cộng b, cộng epsilon.
+
+38
+00:02:15,743 --> 00:02:19,931
+Ký hiệu Sigma nghĩa là cộng dồn qua tất cả các feature. b là độ lệch cố định.
+
+39
+00:02:19,912 --> 00:02:22,963
+Còn epsilon là phần sai số mà từ điển chưa diễn tả được.
+
+40
+00:02:22,943 --> 00:02:26,108
+Điều kỳ diệu là các feature này thường dễ hiểu với con người, ví dụ:
+
+41
+00:02:26,087 --> 00:02:28,003
+feature bật lên khi gặp danh từ số nhiều.
+
+42
+00:02:30,484 --> 00:02:33,792
+SAE học cuốn từ điển đó bằng cách tối ưu hai mục tiêu cùng lúc.
+
+43
+00:02:33,771 --> 00:02:37,848
+Mục tiêu một: bản tái tạo x mũ phải gần với x thật, tức là sai số bình phương nhỏ.
+
+44
+00:02:37,828 --> 00:02:42,431
+Mục tiêu hai: phạt việc dùng quá nhiều feature, để các hệ số fᵢ luôn thưa.
+
+45
+00:02:42,412 --> 00:02:46,424
+Từ điển rất rộng: với Pythia, số feature gấp 64 lần số chiều. Với Gemma 2,
+
+46
+00:02:46,403 --> 00:02:48,743
+tác giả dùng bộ SAE có sẵn tên Gemma Scope.
+
+47
+00:02:51,223 --> 00:02:53,283
+Và đây là mẹo quan trọng đầu tiên của paper.
+
+48
+00:02:53,264 --> 00:02:58,419
+Ta chèn SAE vào nhiều vị trí trong mô hình: attention, MLP và dòng residual ở mỗi tầng.
+
+49
+00:02:58,400 --> 00:03:03,038
+Khi đó, mỗi feature, và cả phần sai số epsilon, trở thành một nút trong đồ thị tính toán.
+
+50
+00:03:03,018 --> 00:03:05,475
+Hình vuông là feature, hình tam giác là sai số.
+
+51
+00:03:05,455 --> 00:03:09,195
+Việc tìm mạch bây giờ chỉ là: chọn ra những nút và cạnh quan trọng nhất trong đồ thị này.
+
+52
+00:03:11,675 --> 00:03:14,768
+Nhưng quan trọng với cái gì? Ta cần một thước đo, ký hiệu m.
+
+53
+00:03:14,747 --> 00:03:19,711
+Mô hình gán cho mỗi từ một xác suất. Ta lấy log xác suất của have trừ đi log xác suất của has.
+
+54
+00:03:19,692 --> 00:03:24,056
+Nếu m dương và lớn, mô hình nghiêng mạnh về have. Nếu âm, nó nghiêng về has.
+
+55
+00:03:24,036 --> 00:03:27,943
+Log chỉ là một cách co giãn thang đo cho dễ so sánh, bạn không cần lo về nó.
+
+56
+00:03:30,424 --> 00:03:34,907
+Để đo tầm quan trọng của một nút a, paper dùng khái niệm hiệu ứng gián tiếp, gọi tắt là IE.
+
+57
+00:03:34,888 --> 00:03:39,394
+Ta có hai câu gần giống nhau: câu sạch, The teacher, và câu vá, The teachers. Chỉ khác số ít,
+
+58
+00:03:39,373 --> 00:03:39,828
+số nhiều.
+
+59
+00:03:39,807 --> 00:03:42,092
+Chạy mô hình trên câu sạch. Rồi, đúng tại nút a,
+
+60
+00:03:42,073 --> 00:03:45,442
+ta thay giá trị của nó bằng giá trị lấy từ câu vá. Ký hiệu do nghĩa là:
+
+61
+00:03:45,421 --> 00:03:46,716
+ép nút này nhận giá trị đó.
+
+62
+00:03:46,695 --> 00:03:51,193
+IE bằng thước đo m sau khi can thiệp, trừ đi m ban đầu. Nếu m thay đổi nhiều,
+
+63
+00:03:51,174 --> 00:03:52,764
+nút a thật sự có ảnh hưởng.
+
+64
+00:03:52,743 --> 00:03:54,677
+Đây là suy luận nhân quả: ta không chỉ nhìn tương quan,
+
+65
+00:03:54,657 --> 00:03:56,243
+mà thật sự can thiệp và xem kết quả thay đổi.
+
+66
+00:03:58,723 --> 00:04:02,056
+Vấn đề là: làm như vậy thì mỗi nút cần chạy lại cả mô hình một lần.
+
+67
+00:04:02,036 --> 00:04:04,864
+Với hàng chục nghìn feature ở nhiều vị trí, việc này quá chậm.
+
+68
+00:04:09,843 --> 00:04:14,298
+Giải pháp là xấp xỉ tuyến tính, dùng gradient. Gradient nghĩa là độ dốc: nếu nhích a một chút,
+
+69
+00:04:14,277 --> 00:04:15,288
+m thay đổi bao nhiêu.
+
+70
+00:04:15,268 --> 00:04:19,079
+Hãy tưởng tượng m là một đường cong theo a. Tại điểm sạch, ta vẽ đường tiếp tuyến.
+
+71
+00:04:19,060 --> 00:04:22,545
+Thay vì thật sự đi tới điểm vá, ta đi dọc theo tiếp tuyến: độ dốc nhân với khoảng cách,
+
+72
+00:04:22,526 --> 00:04:23,184
+là ra ước lượng.
+
+73
+00:04:23,163 --> 00:04:28,007
+Đó là công thức attribution patching: IE xấp xỉ bằng gradient của m theo a,
+
+74
+00:04:27,987 --> 00:04:29,615
+nhân với a vá trừ a sạch.
+
+75
+00:04:29,596 --> 00:04:32,420
+Cái hay: chỉ cần hai lượt chạy xuôi và một lượt lan truyền ngược,
+
+76
+00:04:32,401 --> 00:04:34,319
+ta có ước lượng cho tất cả các nút cùng lúc.
+
+77
+00:04:34,699 --> 00:04:36,487
+Lan truyền ngược, hay backpropagation,
+
+78
+00:04:36,466 --> 00:04:39,184
+là thuật toán tính gradient cho mọi nút chỉ trong một lần.
+
+79
+00:04:41,663 --> 00:04:45,620
+Nhưng nếu đường cong uốn mạnh, tiếp tuyến sẽ đoán sai, nhất là ở các tầng đầu của mô hình.
+
+80
+00:04:45,600 --> 00:04:49,459
+Khi đó paper dùng integrated gradients, tức là gradient tích phân.
+
+81
+00:04:49,439 --> 00:04:54,043
+Ta chia đoạn từ a sạch tới a vá thành 10 bước, đo độ dốc tại mỗi bước, rồi lấy trung bình.
+
+82
+00:04:54,024 --> 00:04:56,524
+Độ dốc trung bình này bám theo đường cong tốt hơn nhiều,
+
+83
+00:04:56,504 --> 00:04:58,339
+đổi lại tốn thêm khoảng 10 lần tính toán.
+
+84
+00:05:02,319 --> 00:05:05,507
+Có điểm IE cho mọi nút rồi, ta lấy trung bình trên nhiều cặp câu.
+
+85
+00:05:05,487 --> 00:05:09,899
+Sau đó giữ lại những nút có độ lớn IE vượt ngưỡng Tₙ. Các nút còn lại bị bỏ đi.
+
+86
+00:05:09,879 --> 00:05:12,899
+Làm tương tự với các cạnh nối giữa các nút, dùng ngưỡng Tₑ.
+
+87
+00:05:12,879 --> 00:05:15,428
+Kết quả là một đồ thị nhỏ gọn: một mạch đặc trưng thưa,
+
+88
+00:05:15,408 --> 00:05:18,372
+gồm các feature dễ hiểu và cách chúng truyền thông tin cho nhau.
+
+89
+00:05:22,351 --> 00:05:23,908
+Tóm lại, quy trình có bốn bước.
+
+90
+00:05:23,887 --> 00:05:27,699
+Bước một: chạy mô hình trên câu sạch và câu vá, lưu lại mọi activation.
+
+91
+00:05:27,680 --> 00:05:30,747
+Bước hai: lan truyền ngược, lưu gradient của m tại mọi nút.
+
+92
+00:05:30,728 --> 00:05:33,723
+Bước ba: tính IE xấp xỉ cho từng nút, lọc theo ngưỡng.
+
+93
+00:05:33,704 --> 00:05:36,939
+Bước bốn: tính IE cho các cạnh, lọc tiếp. Và ta có mạch.
+
+94
+00:05:39,420 --> 00:05:40,711
+Làm sao biết mạch này tốt? Paper dùng hai thước đo.
+
+95
+00:05:40,692 --> 00:05:44,285
+Thứ nhất là độ trung thành, faithfulness. Ta chỉ giữ lại mạch C,
+
+96
+00:05:44,264 --> 00:05:48,247
+còn mọi nút khác bị thay bằng giá trị trung bình. Gọi là mean ablation.
+
+97
+00:05:48,228 --> 00:05:50,536
+Faithfulness bằng m của mạch trừ m của mạch rỗng,
+
+98
+00:05:50,516 --> 00:05:53,059
+chia cho m của cả mô hình trừ m của mạch rỗng. Tức là:
+
+99
+00:05:53,038 --> 00:05:56,048
+mạch giải thích được bao nhiêu phần trăm hành vi. Lý tưởng là 1.
+
+100
+00:05:56,028 --> 00:06:00,619
+Thứ hai là độ đầy đủ, completeness: bỏ mạch đi, xem phần còn lại còn làm được việc không.
+
+101
+00:06:00,598 --> 00:06:01,543
+Lý tưởng là gần 0.
+
+102
+00:06:01,923 --> 00:06:05,658
+Kết quả: trên Pythia, chỉ khoảng 100 feature đã giải thích phần lớn hành vi,
+
+103
+00:06:05,639 --> 00:06:08,639
+trong khi cần khoảng 1500 neuron mới giải thích được một nửa.
+
+104
+00:06:08,620 --> 00:06:13,223
+Trên Gemma 2, khoảng 500 feature so với khoảng 50 nghìn neuron. Feature hiệu quả hơn hẳn.
+
+105
+00:06:17,704 --> 00:06:21,348
+Giờ ta xem một mạch cụ thể: hòa hợp chủ ngữ và động từ qua mệnh đề quan hệ.
+
+106
+00:06:21,327 --> 00:06:24,678
+Câu mẫu: The girl that the teacher sees, rồi đến has hoặc have. Chú ý:
+
+107
+00:06:24,658 --> 00:06:26,867
+động từ phải hợp với girl, không phải teacher.
+
+108
+00:06:26,848 --> 00:06:30,324
+Đầu tiên, các feature ở tầng thấp phát hiện số ít hay số nhiều của danh từ girl.
+
+109
+00:06:30,303 --> 00:06:33,300
+Tiếp theo, các feature nhận ra từ that đang mở đầu một mệnh đề phụ.
+
+110
+00:06:33,279 --> 00:06:35,591
+Rồi các feature phát hiện mệnh đề phụ đã kết thúc,
+
+111
+00:06:35,571 --> 00:06:37,836
+và mang thông tin số của chủ ngữ tới vị trí cuối.
+
+112
+00:06:37,815 --> 00:06:41,435
+Cuối cùng, các feature phân biệt dạng động từ đẩy xác suất về has hoặc have.
+
+113
+00:06:41,815 --> 00:06:44,410
+Mạch này đọc được như một thuật toán mà con người hiểu.
+
+114
+00:06:44,389 --> 00:06:47,451
+Gemma 2 còn dùng thêm các feature theo dõi số của cả cụm danh từ.
+
+115
+00:06:53,432 --> 00:06:57,531
+Phần ứng dụng thú vị nhất: SHIFT, tức là cắt tỉa các feature giả tạo mà con người hiểu được.
+
+116
+00:06:57,512 --> 00:07:00,723
+Bài toán: phân loại nghề nghiệp từ tiểu sử, giáo sư hay y tá.
+
+117
+00:07:00,704 --> 00:07:04,204
+Nhưng dữ liệu huấn luyện bị lệch cực độ: toàn giáo sư nam và y tá nữ.
+
+118
+00:07:04,184 --> 00:07:08,264
+Mô hình sẽ đi đường tắt: đoán theo giới tính thay vì nghề nghiệp. Đó là tín hiệu giả,
+
+119
+00:07:08,244 --> 00:07:09,028
+spurious signal.
+
+120
+00:07:09,007 --> 00:07:13,324
+Các phương pháp cũ cần thêm dữ liệu có nhãn để gỡ lệch. Ở đây, ta không có dữ liệu đó.
+
+121
+00:07:15,803 --> 00:07:19,591
+SHIFT làm như sau. Bước một: tìm mạch đặc trưng giải thích quyết định của bộ phân loại.
+
+122
+00:07:19,572 --> 00:07:22,053
+Bước hai: con người đọc từng feature trong mạch,
+
+123
+00:07:22,033 --> 00:07:24,824
+và đánh giá nó có liên quan đến nghề nghiệp hay không.
+
+124
+00:07:24,803 --> 00:07:29,312
+Ví dụ, feature bật lên với từ she, her, hay women là về giới tính, không liên quan tới nghề.
+
+125
+00:07:29,291 --> 00:07:33,588
+Bước ba: tắt hẳn các feature không liên quan, bằng cách đặt chúng về 0. Bước bốn, tùy chọn:
+
+126
+00:07:33,569 --> 00:07:34,951
+huấn luyện lại lớp phân loại.
+
+127
+00:07:37,432 --> 00:07:39,947
+Kết quả trên Pythia, đo trên dữ liệu cân bằng.
+
+128
+00:07:39,927 --> 00:07:45,358
+Độ chính xác đoán nghề tăng từ 62 phần trăm lên 88, và lên 93 sau khi huấn luyện lại,
+
+129
+00:07:45,338 --> 00:07:47,076
+ngang với mô hình lý tưởng.
+
+130
+00:07:47,055 --> 00:07:51,346
+Khả năng đoán giới tính giảm từ 87 xuống khoảng 52 phần trăm, gần như đoán mò.
+
+131
+00:07:51,326 --> 00:07:54,084
+Nghĩa là thiên kiến giới tính đã gần như biến mất.
+
+132
+00:07:54,064 --> 00:07:59,031
+Nhóm tệ nhất tăng từ 24 lên 89 phần trăm. Còn nếu tắt feature ngẫu nhiên, hay dùng neuron,
+
+133
+00:07:59,012 --> 00:08:00,516
+thì không đạt được như vậy.
+
+134
+00:08:05,495 --> 00:08:08,444
+Cuối cùng, paper tự động hóa toàn bộ quy trình ở quy mô lớn.
+
+135
+00:08:08,423 --> 00:08:12,500
+Lấy một kho văn bản khổng lồ, gom các ví dụ có cách dự đoán giống nhau thành từng cụm,
+
+136
+00:08:12,480 --> 00:08:13,867
+không cần con người gán nhãn.
+
+137
+00:08:13,848 --> 00:08:17,425
+Mỗi cụm là một hành vi, ví dụ: đếm tiếp dãy số một, hai, ba, bốn,
+
+138
+00:08:17,404 --> 00:08:19,339
+hoặc dự đoán từ to sau các động từ.
+
+139
+00:08:19,319 --> 00:08:23,139
+Rồi tìm mạch cho từng cụm. Kết quả là hàng nghìn mạch cho hàng nghìn hành vi,
+
+140
+00:08:23,119 --> 00:08:25,555
+có thể xem tại trang feature circuits chấm x y z.
+
+141
+00:08:30,036 --> 00:08:31,735
+Tất nhiên, phương pháp vẫn có hạn chế.
+
+142
+00:08:31,716 --> 00:08:35,264
+Cần có SAE được huấn luyện sẵn, tốn nhiều tài nguyên tính toán ban đầu.
+
+143
+00:08:35,244 --> 00:08:38,168
+Phần sai số epsilon vẫn là hộp đen nhỏ chưa giải thích được.
+
+144
+00:08:38,148 --> 00:08:41,672
+Và việc gán ý nghĩa cho feature phần lớn vẫn là đánh giá định tính của con người.
+
+145
+00:08:44,152 --> 00:08:46,408
+Tóm lại: paper dùng SAE để có những đơn vị dễ hiểu,
+
+146
+00:08:46,388 --> 00:08:49,740
+dùng gradient để tìm nhanh những đơn vị quan trọng, và nối chúng thành mạch.
+
+147
+00:08:49,720 --> 00:08:53,028
+Mạch đó giúp ta hiểu mô hình, và còn giúp ta sửa mô hình,
+
+148
+00:08:53,008 --> 00:08:56,316
+như gỡ bỏ thiên kiến giới tính mà không cần thêm dữ liệu.
+
+149
+00:08:56,296 --> 00:08:57,587
+Cảm ơn bạn đã theo dõi!
+

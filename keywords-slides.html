@@ -1,0 +1,768 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sparse Feature Circuits – Keywords</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: một slide mỗi màn hình, cột chữ hẹp ~68ch, thanh điều hướng mỏng ở đáy */
+:root {
+  --bg: #fbfbf9;
+  --fg: #1d1f22;
+  --muted: #6b6f76;
+  --line: #e4e4df;
+  --accent: #2f5bd3;
+  --soft: #f1f3f8;
+  --warn: #b5532a;
+  --sans: "Be Vietnam Pro", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 16px/1.65 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+.deck { height: 100%; display: flex; flex-direction: column; }
+.stage { flex: 1; overflow-y: auto; padding: 56px 24px 32px; }
+.slide { display: none; max-width: 760px; margin: 0 auto; }
+.slide.on { display: block; animation: in .18s ease-out; }
+@keyframes in { from { opacity: .3; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .slide.on { animation: none; } }
+
+.tag {
+  font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 18px; display: flex; gap: 10px; flex-wrap: wrap;
+}
+.tag b { color: var(--accent); font-weight: 500; }
+h1 { font-size: 34px; line-height: 1.2; font-weight: 700; margin: 0 0 6px; text-wrap: balance; letter-spacing: -.01em; }
+h2 { font-size: 28px; line-height: 1.25; font-weight: 700; margin: 0 0 4px; text-wrap: balance; }
+.en { font: 400 14px var(--mono); color: var(--muted); margin-bottom: 28px; }
+h3 { font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 28px 0 8px; }
+p { margin: 0 0 12px; max-width: 68ch; }
+ul, ol { margin: 0 0 12px; padding-left: 22px; max-width: 68ch; }
+li { margin-bottom: 6px; }
+code, .m { font-family: var(--mono); font-size: .9em; background: var(--soft); padding: 1px 5px; border-radius: 4px; }
+.eq {
+  font-family: var(--mono); font-size: 15px; background: var(--soft);
+  padding: 14px 16px; border-radius: 6px; margin: 8px 0 14px; overflow-x: auto; white-space: pre;
+}
+.ex { border-left: 2px solid var(--accent); padding: 2px 0 2px 14px; margin: 10px 0 14px; color: var(--fg); }
+.ex .k { font: 500 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); display: block; margin-bottom: 4px; }
+.note { color: var(--muted); font-size: 14px; }
+.next { margin-top: 32px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+.next b { color: var(--fg); font-weight: 600; }
+.wrap { overflow-x: auto; margin: 8px 0 14px; }
+table { border-collapse: collapse; font-size: 14px; min-width: 100%; }
+th, td { text-align: left; padding: 7px 12px 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; color: var(--muted); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); }
+tr.hl td { color: var(--accent); font-weight: 600; }
+.flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0 16px; font-size: 14px; }
+.flow span { border: 1px solid var(--line); background: #fff; padding: 6px 10px; border-radius: 6px; }
+.flow i { font-style: normal; color: var(--muted); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 10px 0 14px; }
+.grid2 > div { border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; background: #fff; min-width: 0; }
+.grid2 h4 { margin: 0 0 6px; font-size: 14px; }
+.grid2 p, .grid2 ul { font-size: 14px; margin: 0; }
+.toc { list-style: none; padding: 0; counter-reset: g; }
+.toc li { padding: 10px 0; border-bottom: 1px solid var(--line); display: flex; gap: 14px; }
+.toc li .g { font: 500 13px var(--mono); color: var(--accent); min-width: 2.2em; }
+
+.bar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--line); background: var(--bg);
+  font: 13px var(--mono); color: var(--muted);
+}
+.bar button {
+  font: inherit; color: var(--fg); background: #fff; border: 1px solid var(--line);
+  border-radius: 6px; padding: 5px 12px; cursor: pointer;
+}
+.bar button:hover { border-color: var(--accent); color: var(--accent); }
+.bar button:focus-visible, .menu a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.progress { flex: 1; height: 2px; background: var(--line); position: relative; min-width: 40px; }
+.progress div { position: absolute; inset: 0 auto 0 0; background: var(--accent); width: 0; transition: width .2s; }
+.count { font-variant-numeric: tabular-nums; min-width: 4.5em; text-align: right; }
+.hint { display: none; }
+@media (min-width: 720px) { .hint { display: inline; } }
+
+.menu {
+  position: fixed; inset: 0 auto 0 0; width: min(360px, 88vw); background: var(--bg);
+  border-right: 1px solid var(--line); overflow-y: auto; padding: 20px 18px 40px;
+  transform: translateX(-100%); transition: transform .2s; z-index: 5;
+}
+.menu.open { transform: none; }
+.menu h5 { font: 500 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 18px 0 6px; }
+.menu a { display: block; color: var(--fg); text-decoration: none; padding: 4px 6px; border-radius: 4px; font-size: 14px; }
+.menu a:hover { background: var(--soft); }
+.menu a.cur { color: var(--accent); font-weight: 600; }
+.scrim { position: fixed; inset: 0; background: rgba(20,22,26,.18); z-index: 4; }
+
+@media (max-width: 520px) {
+  .stage { padding: 32px 16px 24px; }
+  h1 { font-size: 27px; } h2 { font-size: 23px; }
+  .eq { font-size: 13px; }
+}
+</style>
+</head>
+<body>
+<div class="deck">
+<main class="stage" id="stage">
+
+<!-- ============ MỞ ĐẦU ============ -->
+<section class="slide" data-g="Mở đầu" data-t="Paper này là gì">
+  <div class="tag"><b>Mở đầu</b> ICLR 2025 · arXiv 2403.19647</div>
+  <h1>Sparse Feature Circuits</h1>
+  <div class="en">Discovering and Editing Interpretable Causal Graphs in Language Models</div>
+  <p>Marks, Rager, Michaud, Belinkov, Bau, Mueller.</p>
+  <p>Bộ slide đi qua các keyword của paper theo thứ tự: muốn hiểu keyword sau thì cần hiểu keyword trước. Mỗi slide có ba phần: keyword là gì, paper dùng nó ở đâu, và slide tiếp theo cần nó để làm gì.</p>
+  <h3>Cách dùng</h3>
+  <ul>
+    <li><code>→</code> / <code>Space</code>: slide sau. <code>←</code>: slide trước.</li>
+    <li><code>M</code>: mở danh sách slide.</li>
+    <li>Chỗ nào chưa hiểu thì ghi lại số slide và hỏi.</li>
+  </ul>
+</section>
+
+<section class="slide" data-g="Mở đầu" data-t="Thứ tự 6 nhóm keyword">
+  <div class="tag"><b>Mở đầu</b> lộ trình</div>
+  <h2>6 nhóm keyword</h2>
+  <div class="en">mỗi nhóm dựa trên nhóm trước</div>
+  <ol class="toc">
+    <li><span class="g">1</span><span><b>Bối cảnh.</b> Transformer gồm những thành phần nào, và vì sao đọc từng neuron không giải thích được model.</span></li>
+    <li><span class="g">2</span><span><b>SAE và feature.</b> Unit phân tích mới, dùng thay cho neuron.</span></li>
+    <li><span class="g">3</span><span><b>Causal effect.</b> Đo một node ảnh hưởng tới output bao nhiêu, và cách ước lượng nhanh cho hàng chục nghìn node cùng lúc.</span></li>
+    <li><span class="g">4</span><span><b>Tìm circuit.</b> Ghép nhóm 2 và 3 để có graph các feature quan trọng. Đây là phương pháp chính của paper.</span></li>
+    <li><span class="g">5</span><span><b>SHIFT.</b> Dùng circuit để loại bỏ spurious correlation khỏi một classifier.</span></li>
+    <li><span class="g">6</span><span><b>Unsupervised.</b> Tự tìm hành vi của model, rồi tự tìm circuit cho từng hành vi.</span></li>
+  </ol>
+</section>
+
+<!-- ============ NHÓM 1 ============ -->
+<section class="slide" data-g="1 · Bối cảnh" data-t="Mechanistic interpretability">
+  <div class="tag"><b>Nhóm 1</b> bối cảnh</div>
+  <h2>Mechanistic interpretability</h2>
+  <div class="en">Olah et al. · Elhage et al.</div>
+  <h3>Là gì</h3>
+  <p>Hướng nghiên cứu phân tích bên trong một model đã train để trả lời: với một input cụ thể, những thành phần nào bên trong được kích hoạt, chúng truyền thông tin cho nhau ra sao, và từ đó model tạo ra output như thế nào.</p>
+  <p>Khác với các phương pháp chỉ nhìn input–output (ví dụ: saliency map tô màu token quan trọng), mechanistic interpretability phải chỉ ra được thông tin <em>đi qua những bước tính toán nào</em> bên trong model.</p>
+  <h3>Vấn đề paper nêu ra</h3>
+  <p>Model có rất nhiều hành vi mà người nghiên cứu không đoán trước được. Vì vậy phương pháp interpretability cần (1) dùng unit interpretable và (2) chạy được trên model lớn mà người nghiên cứu không phải đưa ra giả thuyết từ trước.</p>
+  <div class="next">Cần biết tiếp: <b>bên trong một language model có những thành phần nào</b>.</div>
+</section>
+
+<section class="slide" data-g="1 · Bối cảnh" data-t="Transformer: residual stream, attention, MLP">
+  <div class="tag"><b>Nhóm 1</b> bối cảnh</div>
+  <h2>Residual stream, attention, MLP</h2>
+  <div class="en">các sublayer của một transformer layer</div>
+  <p>Mỗi token có một vector gọi là <b>residual stream</b>. Vector này đi qua lần lượt từng layer. Trong mỗi layer có hai sublayer đọc từ residual stream và cộng kết quả trở lại:</p>
+  <div class="eq">resid₀ = embedding(token)
+resid  = resid + Attention(resid)   # lấy thông tin từ các token khác
+resid  = resid + MLP(resid)         # biến đổi riêng tại token này
+... lặp lại cho mỗi layer ...
+logits = Unembed(resid_cuối)        # xác suất của token tiếp theo</div>
+  <ul>
+    <li><b>Attention</b>: lấy thông tin từ các token đứng trước. Mỗi attention layer có nhiều <b>head</b> chạy song song.</li>
+    <li><b>MLP</b>: hai linear layer với một nonlinearity ở giữa, xử lý từng token độc lập.</li>
+    <li>Vì mọi sublayer đều <em>cộng</em> kết quả vào residual stream, mọi sublayer phía sau đều đọc được output của các sublayer phía trước.</li>
+  </ul>
+  <h3>Trong paper</h3>
+  <p>Paper gắn SAE vào 4 vị trí: embedding, output của attention, output của MLP, và residual stream sau mỗi layer.</p>
+  <div class="next">Cần biết tiếp: <b>hai model paper phân tích</b>.</div>
+</section>
+
+<section class="slide" data-g="1 · Bối cảnh" data-t="Pythia-70M và Gemma-2-2B">
+  <div class="tag"><b>Nhóm 1</b> bối cảnh</div>
+  <h2>Pythia-70M và Gemma-2-2B</h2>
+  <div class="en">hai model được phân tích</div>
+  <div class="wrap"><table>
+    <tr><th></th><th class="n">Parameters</th><th class="n">Số layer</th><th class="n">d (d_model)</th><th>SAE</th></tr>
+    <tr><td>Pythia-70M</td><td class="n">70M</td><td class="n">6</td><td class="n">512</td><td>Tác giả tự train</td></tr>
+    <tr><td>Gemma-2-2B</td><td class="n">2B</td><td class="n">26</td><td class="n">2304</td><td>Gemma Scope (Google, open-source)</td></tr>
+  </table></div>
+  <p>Pythia-70M nhỏ nên circuit có ít node, người nghiên cứu đọc được từng feature một. Gemma-2-2B dùng để kiểm tra kết quả còn đúng ở model lớn hơn. Section 5 (phần tự động hóa) chỉ dùng Pythia-70M.</p>
+  <div class="next">Cần biết tiếp: <b>"neuron" trong paper nghĩa là gì</b>.</div>
+</section>
+
+<section class="slide" data-g="1 · Bối cảnh" data-t="Neuron">
+  <div class="tag"><b>Nhóm 1</b> bối cảnh</div>
+  <h2>Neuron</h2>
+  <div class="en">basis-aligned direction · footnote 1</div>
+  <p>Paper định nghĩa (footnote 1): neuron là <b>một tọa độ</b> của vector activation. Residual stream của Pythia có 512 chiều, nên tại mỗi vị trí có 512 neuron.</p>
+  <div class="eq">x = [x₁, x₂, ..., x₅₁₂]     # mỗi xᵢ là một "neuron"</div>
+  <p>Định nghĩa này rộng hơn nghĩa thông thường: neuron không cần phải đứng sau một activation function. Một tọa độ của attention output cũng gọi là neuron.</p>
+  <h3>Trong paper</h3>
+  <p>Neuron là baseline. Paper chạy cùng thuật toán tìm circuit với neuron thay cho feature, rồi so sánh: cần bao nhiêu node để giải thích cùng một hành vi, và người đọc có hiểu được node đó không.</p>
+  <div class="next">Cần biết tiếp: <b>vì sao đọc từng neuron không hiểu được</b>.</div>
+</section>
+
+<section class="slide" data-g="1 · Bối cảnh" data-t="Polysemantic">
+  <div class="tag"><b>Nhóm 1</b> bối cảnh</div>
+  <h2>Polysemantic</h2>
+  <div class="en">polysemanticity · Elhage et al., 2022</div>
+  <h3>Là gì</h3>
+  <p>Một neuron kích hoạt mạnh với nhiều loại input chẳng liên quan gì đến nhau. Ví dụ: cùng một neuron bật mạnh trên mã HTML, trên tên tiếng Hàn, và trên câu nói về bóng đá. Nhìn vào neuron đó thì không biết nó đang biểu diễn khái niệm nào.</p>
+  <h3>Nguyên nhân (giả thuyết superposition)</h3>
+  <p>Model cần biểu diễn nhiều khái niệm hơn số chiều nó có (ví dụ hàng chục nghìn khái niệm trong 512 chiều). Nó gán mỗi khái niệm một <b>hướng</b> (direction) trong activation space; các hướng này không trùng với trục tọa độ và gần vuông góc với nhau. Vì vậy mỗi neuron (một trục tọa độ) chứa một phần của nhiều khái niệm cùng lúc.</p>
+  <p>Cách xếp này dùng được vì mỗi input chỉ chứa vài khái niệm cùng lúc (khái niệm <b>sparse</b>), nên các hướng ít khi chồng lên nhau gây nhiễu.</p>
+  <h3>Hệ quả cho paper</h3>
+  <p>Vì khái niệm nằm theo hướng chứ không nằm gọn trong từng neuron, cần một cách tìm lại các hướng đó. SAE ở nhóm 2 làm việc này.</p>
+  <div class="next">Cần biết tiếp: <b>circuit là gì</b>, để biết paper muốn tìm cái gì từ các unit này.</div>
+</section>
+
+<section class="slide" data-g="1 · Bối cảnh" data-t="Circuit">
+  <div class="tag"><b>Nhóm 1</b> bối cảnh</div>
+  <h2>Circuit</h2>
+  <div class="en">subgraph · Olah et al., 2020</div>
+  <h3>Là gì</h3>
+  <p>Một phần nhỏ của model (<b>subgraph</b>), gồm các node và các edge nối chúng, sao cho khi chỉ giữ lại phần này thì model vẫn thực hiện được một hành vi cụ thể.</p>
+  <h3>Các công trình trước</h3>
+  <ul>
+    <li><b>Induction heads</b> (Olsson et al., 2022): một cặp attention head thực hiện "thấy A B trước đó, giờ gặp A thì đoán B".</li>
+    <li><b>IOI circuit</b> (Wang et al., 2023): khoảng 26 attention head giải thích việc chọn đúng tên trong câu "When Mary and John went to the store, John gave a drink to ___".</li>
+  </ul>
+  <p>Các circuit này dùng unit là <b>head</b> hoặc <b>cả MLP</b>. Các unit này quá lớn và polysemantic: biết "head 9.6 quan trọng" nhưng vẫn không biết head đó tính cái gì.</p>
+  <h3>Paper đổi gì</h3>
+  <p>Giữ ý tưởng circuit, nhưng node là <b>SAE feature</b> thay vì head/neuron. Tên paper đến từ đây: <em>sparse feature</em> circuit.</p>
+  <div class="next">Sang nhóm 2: <b>SAE feature là gì</b>.</div>
+</section>
+
+<!-- ============ NHÓM 2 ============ -->
+<section class="slide" data-g="2 · SAE" data-t="Dictionary learning">
+  <div class="tag"><b>Nhóm 2</b> SAE và feature</div>
+  <h2>Dictionary learning</h2>
+  <div class="en">dictionary · sparse coding</div>
+  <h3>Là gì</h3>
+  <p>Tìm một tập vector <code>v₁, v₂, ..., v_N</code> (gọi là dictionary) sao cho mọi vector dữ liệu <code>x</code> viết được thành tổng có trọng số của <b>một vài</b> vector trong tập đó.</p>
+  <div class="eq">x ≈ 3.1·v₈₂ + 0.7·v₄₀₉₁ + 1.4·v₁₂₀₀₀     # chỉ 3 trên N hệ số khác 0</div>
+  <p>Điểm khác với PCA: N có thể lớn hơn số chiều của x rất nhiều (ví dụ 32768 vector cho x có d = 512; gọi là overcomplete), bù lại, mỗi x chỉ dùng vài vector trong số đó.</p>
+  <h3>Liên hệ với polysemantic</h3>
+  <p>Theo giả thuyết superposition, model dùng rất nhiều hướng nhưng mỗi input chỉ dùng vài hướng. Dictionary learning tìm đúng kiểu cấu trúc này: nhiều vector, mỗi lần chỉ dùng vài cái. Nếu học tốt, mỗi <code>vᵢ</code> ứng với một khái niệm.</p>
+  <div class="next">Cần biết tiếp: <b>SAE</b>, neural network dùng để học dictionary này.</div>
+</section>
+
+<section class="slide" data-g="2 · SAE" data-t="Sparse Autoencoder (SAE)">
+  <div class="tag"><b>Nhóm 2</b> SAE và feature</div>
+  <h2>Sparse Autoencoder (SAE)</h2>
+  <div class="en">Equation (1) trong paper</div>
+  <p>SAE là một neural network 2 layer (encoder, decoder) được train riêng sau khi language model đã train xong; weight của language model không bị thay đổi.</p>
+  <div class="eq">encoder:  f(x) = ReLU(W_enc · x + b_enc)      # f có d_SAE chiều, phần lớn = 0
+decoder:  x̂   = Σᵢ fᵢ(x) · vᵢ + b            # vᵢ là cột i của W_dec
+          x   = x̂ + ε(x)</div>
+  <ul>
+    <li><code>x</code>: activation lấy từ một vị trí trong LM (ví dụ residual stream layer 3), d chiều.</li>
+    <li><code>vᵢ</code>: <b>feature</b> thứ i, một vector đơn vị d chiều. Đây là dictionary.</li>
+    <li><code>fᵢ(x) ≥ 0</code>: <b>feature activation</b>, cho biết feature i xuất hiện trong x mạnh hay yếu.</li>
+    <li><code>ε(x)</code>: phần SAE không reconstruct được (slide sau).</li>
+  </ul>
+  <p>Mỗi vị trí có một SAE riêng. Với Pythia-70M: 1 embedding + 6 layer × 3 (attn, MLP, resid) = 19 SAE.</p>
+  <div class="next">Cần biết tiếp: <b>cái gì buộc f(x) phải sparse</b>.</div>
+</section>
+
+<section class="slide" data-g="2 · SAE" data-t="Sparsity và L1 loss">
+  <div class="tag"><b>Nhóm 2</b> SAE và feature</div>
+  <h2>Sparsity, L1 regularization</h2>
+  <div class="en">loss function khi train SAE</div>
+  <div class="eq">Loss = ‖x − x̂‖²         +   λ · Σᵢ |fᵢ(x)|
+       (reconstruction)       (L1 penalty trên activation)</div>
+  <ul>
+    <li><b>Reconstruction loss</b> buộc x̂ gần x, để SAE không làm mất thông tin trong activation của LM.</li>
+    <li><b>L1 term</b> phạt tổng độ lớn các fᵢ, đẩy phần lớn fᵢ về 0. Kết quả: với mỗi input, chỉ vài chục trong số hàng chục nghìn feature được bật.</li>
+    <li><code>λ</code> cân bằng hai mục tiêu: λ lớn thì sparse hơn nhưng reconstruction kém hơn.</li>
+  </ul>
+  <h3>Vì sao sparse thì dễ đọc</h3>
+  <p>Một feature chỉ bật trên một nhóm input hẹp. Xem các câu làm feature đó bật mạnh nhất, người đọc thấy chúng có điểm chung (ví dụ: đều là danh từ số nhiều đứng làm chủ ngữ), rồi đặt được tên cho feature.</p>
+  <p class="note">Theo paper, crowdworker chấm feature của SAE Pythia interpretable hơn neuron, và khác biệt này có ý nghĩa thống kê (Appendix F).</p>
+  <div class="next">Cần biết tiếp: <b>reconstruction error của SAE</b> được xử lý thế nào.</div>
+</section>
+
+<section class="slide" data-g="2 · SAE" data-t="Feature và feature activation">
+  <div class="tag"><b>Nhóm 2</b> SAE và feature</div>
+  <h2>Feature, feature activation</h2>
+  <div class="en">vᵢ và fᵢ(x)</div>
+  <div class="grid2">
+    <div><h4>Feature <code>vᵢ</code></h4><p>Một hướng cố định trong activation space. Có sẵn sau khi train SAE, không đổi theo input.</p></div>
+    <div><h4>Feature activation <code>fᵢ(x)</code></h4><p>Một số ≥ 0, thay đổi theo từng input và từng token position. Bằng 0 ở phần lớn token.</p></div>
+  </div>
+  <h3>Cách biết một feature mang nghĩa gì</h3>
+  <ol>
+    <li>Chạy LM trên corpus lớn, ghi lại các token có <code>fᵢ</code> cao nhất.</li>
+    <li>Xem các token đó có điểm chung gì (feature <em>phản ứng</em> với cái gì).</li>
+    <li>Nhân <code>vᵢ</code> qua unembedding để xem feature này làm tăng logit của token nào (feature <em>tác động</em> lên output ra sao).</li>
+  </ol>
+  <div class="ex"><span class="k">Ví dụ từ paper (Fig. 4)</span>Feature "noun number detector": bật trên danh từ số nhiều ở vị trí chủ ngữ. Feature "verb form discriminator": đẩy xác suất của <code>have</code> lên so với <code>has</code>.</div>
+  <p class="note">Công cụ Neuronpedia hiển thị hai thông tin trên cho từng feature. Paper dùng nó ở Section 4.</p>
+  <div class="next">Cần biết tiếp: <b>SAE error term</b>.</div>
+</section>
+
+<section class="slide" data-g="2 · SAE" data-t="SAE error term ε">
+  <div class="tag"><b>Nhóm 2</b> SAE và feature</div>
+  <h2>SAE error term <code>ε(x)</code></h2>
+  <div class="en">reconstruction error</div>
+  <div class="eq">ε(x) = x − x̂</div>
+  <p>SAE không reconstruct x chính xác tuyệt đối. Nếu thay x bằng x̂ khi chạy LM, output sẽ khác đi, tức là ta đang phân tích một model khác chứ không còn là model gốc.</p>
+  <h3>Cách paper xử lý</h3>
+  <p>Giữ <code>ε</code> lại và coi nó là <b>một node riêng</b> trong graph, đặt cạnh các feature node. Vì <code>x = x̂ + ε</code> đúng tuyệt đối, chèn SAE vào LM theo cách này không làm thay đổi output.</p>
+  <ul>
+    <li>Nếu error node có IE nhỏ: SAE feature đã chứa phần lớn cơ chế.</li>
+    <li>Nếu error node có IE lớn: còn một phần cơ chế SAE chưa biểu diễn được, và circuit cho thấy rõ phần đó thay vì lặng lẽ bỏ qua.</li>
+  </ul>
+  <p>Trong hình circuit của paper, feature vẽ bằng hình vuông, error node vẽ bằng hình tam giác. Không đọc được nghĩa của error node.</p>
+  <div class="next">Cần biết tiếp: <b>cấu hình SAE</b> paper dùng.</div>
+</section>
+
+<section class="slide" data-g="2 · SAE" data-t="d_SAE, JumpReLU, Gemma Scope">
+  <div class="tag"><b>Nhóm 2</b> SAE và feature</div>
+  <h2>d_SAE, JumpReLU, Gemma Scope</h2>
+  <div class="en">cấu hình SAE</div>
+  <div class="wrap"><table>
+    <tr><th></th><th>Pythia-70M</th><th>Gemma-2-2B</th></tr>
+    <tr><td>Nguồn</td><td>Tác giả train (theo Bricken et al., 2023)</td><td>Gemma Scope (Lieberum et al., 2024)</td></tr>
+    <tr><td>Width d_SAE</td><td class="m">64 × 512 = 32 768</td><td class="m">8 × d</td></tr>
+    <tr><td>Encoder</td><td>ReLU</td><td>JumpReLU</td></tr>
+    <tr><td>Vị trí (hook point)</td><td>embedding, attn, MLP, resid</td><td>attn, MLP, resid (không có embedding)</td></tr>
+  </table></div>
+  <ul>
+    <li><b>d_SAE</b> (width): số feature trong dictionary. Width càng lớn thì mỗi feature càng mang nghĩa hẹp hơn.</li>
+    <li><b>JumpReLU</b>: giống ReLU nhưng có ngưỡng θ riêng cho từng feature: <code>f = z nếu z &gt; θ, ngược lại 0</code>. Ngưỡng này loại các activation nhỏ do nhiễu, nên SAE sparse hơn mà reconstruction không kém đi.</li>
+  </ul>
+  <p>Paper không đề xuất SAE mới. Paper dùng các SAE đã train sẵn và tập trung vào cách dùng chúng để tìm circuit.</p>
+  <div class="next">Sang nhóm 3: <b>đo một node quan trọng đến đâu</b>.</div>
+</section>
+
+<!-- ============ NHÓM 3 ============ -->
+<section class="slide" data-g="3 · Causal effect" data-t="Metric m">
+  <div class="tag"><b>Nhóm 3</b> causal effect</div>
+  <h2>Metric <code>m</code></h2>
+  <div class="en">con số đại diện cho hành vi</div>
+  <p>Để nói một node "quan trọng", trước hết cần một con số đo hành vi. Paper dùng hiệu log-xác suất giữa hai đáp án:</p>
+  <div class="eq">m(x) = log P("are" | x) − log P("is" | x)</div>
+  <p>Với <code>x = "The teachers"</code>, nếu model đúng thì m dương. Với <code>x = "The teacher"</code> thì m âm.</p>
+  <h3>Các metric khác trong paper</h3>
+  <ul>
+    <li>Section 4 (classifier): <code>m = −log C(y | x)</code>, loss của classifier trên nhãn đúng.</li>
+    <li>Section 5 (unsupervised): <code>m = −log P(yᵢ | xᵢ)</code>, loss khi dự đoán token tiếp theo.</li>
+  </ul>
+  <div class="next">Cần biết tiếp: <b>cặp input dùng để đo</b>.</div>
+</section>
+
+<section class="slide" data-g="3 · Causal effect" data-t="Contrastive pair">
+  <div class="tag"><b>Nhóm 3</b> causal effect</div>
+  <h2>Contrastive pair</h2>
+  <div class="en">x_clean, x_patch</div>
+  <p>Hai input giống hệt nhau, chỉ khác đúng một yếu tố cần nghiên cứu.</p>
+  <div class="eq">x_clean = "The boy near the teacher"     → đáp án đúng: has
+x_patch = "The boys near the teacher"    → đáp án đúng: have</div>
+  <p>Chỉ khác chủ ngữ số ít/số nhiều. Các node có activation khác nhau giữa hai lần chạy là các node mang thông tin "chủ ngữ số ít hay số nhiều".</p>
+  <h3>Vì sao cần cặp</h3>
+  <p>Với chỉ một input, rất nhiều node có activation lớn (xử lý ngữ pháp, nhận dạng từ "teacher", v.v.). So sánh hai input sẽ loại được các node này, vì giá trị của chúng gần như không đổi giữa hai lần chạy.</p>
+  <div class="next">Cần biết tiếp: <b>activation patching</b>, cách dùng cặp này để đo.</div>
+</section>
+
+<section class="slide" data-g="3 · Causal effect" data-t="Activation patching, do(·)">
+  <div class="tag"><b>Nhóm 3</b> causal effect</div>
+  <h2>Activation patching, intervention</h2>
+  <div class="en">do(a = a_patch) · do-operator của Pearl</div>
+  <ol>
+    <li>Chạy model trên <code>x_patch</code>. Lưu giá trị của node a: <code>a_patch</code>.</li>
+    <li>Chạy model trên <code>x_clean</code>, nhưng khi tính đến node a thì <b>ghi đè</b> giá trị của a bằng <code>a_patch</code>. Các node phía sau tính tiếp từ giá trị đã ghi đè.</li>
+    <li>Đo <code>m</code> ở output.</li>
+  </ol>
+  <div class="flow"><span>"The boy …"</span><i>→</i><span>layer 1</span><i>→</i><span>node a ← a_patch</span><i>→</i><span>layer 3…6</span><i>→</i><span>m = ?</span></div>
+  <p>Ký hiệu <code>do(a = a_patch)</code> nghĩa là chủ động gán giá trị đó cho a (intervention), chứ không phải ngồi quan sát xem a tự nhận giá trị gì. Vì chỉ a bị thay đổi, nếu m đổi thì nguyên nhân là a: đây là kết luận <b>causal</b>.</p>
+  <p>Nếu chỉ patch một node mà output chuyển từ <code>has</code> sang <code>have</code>, node đó mang thông tin số ít/số nhiều và model thật sự dùng nó.</p>
+  <div class="next">Cần biết tiếp: <b>indirect effect</b>, con số tóm tắt kết quả patching.</div>
+</section>
+
+<section class="slide" data-g="3 · Causal effect" data-t="Indirect effect (IE)">
+  <div class="tag"><b>Nhóm 3</b> causal effect</div>
+  <h2>Indirect effect (IE)</h2>
+  <div class="en">Equation (2)</div>
+  <div class="eq">IE(m; a; x_clean, x_patch) = m(x_clean | do(a = a_patch)) − m(x_clean)</div>
+  <p>Chênh lệch của metric giữa lần chạy có patch và lần chạy bình thường.</p>
+  <ul>
+    <li><b>|IE| lớn</b>: node a ảnh hưởng mạnh tới hành vi.</li>
+    <li><b>IE ≈ 0</b>: thay đổi a không làm hành vi đổi.</li>
+    <li>Dấu của IE cho biết a đẩy m tăng hay giảm.</li>
+  </ul>
+  <p>Gọi là "indirect" vì a không tác động thẳng lên output mà thông qua các node phía sau nó (downstream).</p>
+  <h3>Vấn đề chi phí</h3>
+  <p>Tính IE chính xác cần một forward pass riêng cho <b>từng node</b>. Pythia có 19 SAE × 32 768 feature × số vị trí token: hàng triệu forward pass cho một cặp input. Không chạy nổi.</p>
+  <div class="next">Cần biết tiếp: <b>attribution patching</b>, cách ước lượng IE cho mọi node cùng lúc.</div>
+</section>
+
+<section class="slide" data-g="3 · Causal effect" data-t="Zero-ablation, mean-ablation">
+  <div class="tag"><b>Nhóm 3</b> causal effect</div>
+  <h2>Zero-ablation, mean-ablation</h2>
+  <div class="en">dùng khi không có contrastive pair</div>
+  <p>Ở Section 4 và 5, dữ liệu không có cặp contrastive, chỉ có một input x. Khi đó thay <code>a_patch</code> bằng 0:</p>
+  <div class="eq">IE(m; a; x) = m(x | do(a = 0)) − m(x)</div>
+  <p>Ý nghĩa: tắt node a thì metric thay đổi bao nhiêu. Với SAE feature, gán về 0 có nghĩa rõ ràng: feature đó không xuất hiện.</p>
+  <h3>Mean-ablation</h3>
+  <p>Thay a bằng giá trị trung bình của nó trên dataset (theo từng token position). Paper dùng mean-ablation khi đo <b>faithfulness</b> (nhóm 4): node bị loại khỏi circuit nhận giá trị trung bình, nên model vẫn có thông tin chung về task nhưng mất thông tin riêng của input.</p>
+  <div class="next">Tiếp: <b>attribution patching</b>.</div>
+</section>
+
+<section class="slide" data-g="3 · Causal effect" data-t="Attribution patching (AtP)">
+  <div class="tag"><b>Nhóm 3</b> causal effect</div>
+  <h2>Attribution patching</h2>
+  <div class="en">AtP · Equation (3) · Nanda 2022, Syed et al. 2023</div>
+  <p>Xấp xỉ IE bằng khai triển Taylor bậc 1: nếu m gần tuyến tính theo a, thì</p>
+  <div class="eq">IE ≈ ∇ₐm |_(a = a_clean)  ·  (a_patch − a_clean)
+       └ gradient của m       └ a thay đổi bao nhiêu
+         theo a</div>
+  <h3>Chi phí</h3>
+  <ol>
+    <li>Forward trên <code>x_clean</code>, lưu mọi <code>a_clean</code>.</li>
+    <li>Forward trên <code>x_patch</code>, lưu mọi <code>a_patch</code>.</li>
+    <li>Một backward pass từ m là có <code>∇ₐm</code> cho <b>mọi</b> node.</li>
+  </ol>
+  <p>Tổng: 2 forward + 1 backward cho tất cả node, thay vì một forward cho mỗi node.</p>
+  <h3>Giới hạn</h3>
+  <p>Khi m không tuyến tính theo a trên đoạn từ a_clean tới a_patch, xấp xỉ bị sai. Paper thấy AtP ước lượng thấp hơn IE thật ở MLP layer 0 và residual stream các layer đầu.</p>
+  <div class="next">Tiếp: <b>integrated gradients</b>, cách sửa lỗi này.</div>
+</section>
+
+<section class="slide" data-g="3 · Causal effect" data-t="Integrated gradients (IG)">
+  <div class="tag"><b>Nhóm 3</b> causal effect</div>
+  <h2>Integrated gradients</h2>
+  <div class="en">IG · Equation (4) · Sundararajan et al. 2017</div>
+  <p>AtP lấy gradient tại một điểm (a_clean). IG lấy gradient tại N điểm nằm trên đoạn thẳng từ a_clean đến a_patch, rồi lấy trung bình:</p>
+  <div class="eq">IE ≈ (1/N) Σ_α  ∇ₐm |_(α·a_clean + (1−α)·a_patch)  ·  (a_patch − a_clean)
+     α ∈ {0, 1/N, ..., (N−1)/N},   N = 10</div>
+  <p>Lấy trung bình gradient trên cả đoạn thì tính được cả phần phi tuyến mà gradient tại một điểm bỏ sót.</p>
+  <h3>Chi phí</h3>
+  <p>Gấp khoảng N lần AtP. Ngoài ra, khi node này nằm sau node kia, phải tính lần lượt từng layer, nên model càng nhiều layer thì càng tốn.</p>
+  <h3>Paper chọn</h3>
+  <p>Dùng IG trong các thí nghiệm chính vì nó sửa được lỗi ước lượng thấp ở các layer đầu (Appendix H so sánh độ chính xác của hai cách).</p>
+  <div class="next">Sang nhóm 4: <b>ghép SAE với cách đo IE để tìm circuit</b>.</div>
+</section>
+
+<!-- ============ NHÓM 4 ============ -->
+<section class="slide" data-g="4 · Tìm circuit" data-t="Computation graph với SAE">
+  <div class="tag"><b>Nhóm 4</b> phương pháp chính · §3.1</div>
+  <h2>Computation graph có SAE</h2>
+  <div class="en">ý tưởng chính của paper</div>
+  <p>Tại mỗi vị trí có SAE, thay activation x bằng phân rã của nó:</p>
+  <div class="eq">x  →  f₁(x)·v₁ + f₂(x)·v₂ + ... + f_N(x)·v_N + b + ε(x)</div>
+  <p>Vì đẳng thức đúng tuyệt đối, LM vẫn cho đúng output cũ. Nhưng giờ <code>fᵢ(x)</code> và <code>ε(x)</code> là các giá trị trung gian trong quá trình tính, nên patch hay lấy gradient theo chúng được, giống với mọi activation khác.</p>
+  <h3>Graph G</h3>
+  <ul>
+    <li><b>Node</b>: một feature activation <code>fᵢ</code> hoặc một error <code>ε</code>, tại một token position cụ thể, ở một SAE cụ thể.</li>
+    <li><b>Edge</b>: effect của một upstream node lên một downstream node.</li>
+  </ul>
+  <p>Đến đây, bài toán "tìm circuit gồm các feature" trở thành: tính IE cho mọi node và edge trong G, giữ lại những node và edge có IE lớn.</p>
+  <div class="next">Tiếp: <b>4 bước của thuật toán</b>.</div>
+</section>
+
+<section class="slide" data-g="4 · Tìm circuit" data-t="4 bước tìm circuit (Fig. 2)">
+  <div class="tag"><b>Nhóm 4</b> phương pháp chính · Figure 2</div>
+  <h2>4 bước tìm circuit</h2>
+  <div class="en">sparse feature circuit discovery</div>
+  <ol>
+    <li><b>Cache.</b> Forward trên x_clean và x_patch. Lưu fᵢ, ε ở mọi SAE, và lưu m.</li>
+    <li><b>Backpropagate.</b> Backward từ m, lưu gradient của m theo từng fᵢ và ε.</li>
+    <li><b>Tính IE cho node, lọc node.</b> Dùng AtP hoặc IG. Lấy trung bình trên dataset. Giữ node có <code>|IE| &gt; T_N</code>.</li>
+    <li><b>Tính IE cho edge, lọc edge.</b> Chỉ xét edge giữa các node còn lại. Giữ edge có <code>|IE| &gt; T_E</code>.</li>
+  </ol>
+  <div class="flow"><span>contrastive pair</span><i>→</i><span>cache</span><i>→</i><span>gradient</span><i>→</i><span>lọc node (T_N)</span><i>→</i><span>lọc edge (T_E)</span><i>→</i><span>circuit</span></div>
+  <h3>IE của edge (App. A.1)</h3>
+  <p>IE của edge u → d là phần ảnh hưởng của u lên m <em>đi qua</em> d. Tính xấp xỉ bằng chain rule:</p>
+  <div class="eq">IE(u → d) ≈ ∇_d m · ∇_u d · (u_patch − u_clean)</div>
+  <div class="next">Tiếp: <b>ngưỡng T_N, T_E</b> và aggregation.</div>
+</section>
+
+<section class="slide" data-g="4 · Tìm circuit" data-t="Ngưỡng và aggregation">
+  <div class="tag"><b>Nhóm 4</b> phương pháp chính</div>
+  <h2>Ngưỡng T_N, T_E và aggregation</h2>
+  <div class="en">chọn kích thước circuit · gộp kết quả của nhiều input</div>
+  <h3>Ngưỡng (threshold)</h3>
+  <p>T_N và T_E quyết định circuit lớn hay nhỏ. Ngưỡng thấp: nhiều node, faithfulness cao hơn nhưng khó đọc. Ngưỡng cao: ít node, dễ đọc nhưng bỏ sót. Paper thử nhiều giá trị T_N rồi vẽ faithfulness theo số node (Fig. 3).</p>
+  <h3>Aggregation</h3>
+  <ul>
+    <li><b>Templatic data</b> (cùng khuôn câu, ví dụ "The [N] near the [N]"): token cùng vị trí đóng cùng vai trò, nên lấy trung bình IE của node theo <b>từng vị trí</b> qua các ví dụ. Nhờ vậy circuit cho biết mỗi node nằm ở token nào.</li>
+    <li><b>Non-templatic data</b> (Section 4, 5: câu dài ngắn khác nhau): cộng IE của cùng một feature qua mọi vị trí token, rồi lấy trung bình qua ví dụ. Circuit không còn cho biết node nằm ở token nào.</li>
+  </ul>
+  <div class="next">Tiếp: <b>task dùng để kiểm chứng</b> phương pháp.</div>
+</section>
+
+<section class="slide" data-g="4 · Tìm circuit" data-t="Subject-verb agreement">
+  <div class="tag"><b>Nhóm 4</b> kiểm chứng · §3.2, Table 1</div>
+  <h2>Subject-verb agreement</h2>
+  <div class="en">chủ ngữ và động từ khớp số ít/số nhiều</div>
+  <p>Model phải chọn dạng động từ khớp số ít/số nhiều với chủ ngữ. Task này được chọn vì đáp án rõ ràng, dễ tạo contrastive pair, và ngữ pháp đã biết sẵn nên đối chiếu được với circuit tìm ra.</p>
+  <div class="wrap"><table>
+    <tr><th>Cấu trúc</th><th>Ví dụ clean input</th><th>Metric</th></tr>
+    <tr><td>Simple</td><td>The parents</td><td class="m">p(is) − p(are)</td></tr>
+    <tr><td>Within RC</td><td>The athlete that the managers</td><td class="m">p(likes) − p(like)</td></tr>
+    <tr><td>Across RC</td><td>The athlete that the managers like</td><td class="m">p(do) − p(does)</td></tr>
+    <tr><td>Across PP</td><td>The secretaries near the cars</td><td class="m">p(has) − p(have)</td></tr>
+  </table></div>
+  <ul>
+    <li><b>RC</b> (relative clause): "that the managers like".</li>
+    <li><b>PP</b> (prepositional phrase): "near the cars".</li>
+    <li>"Across" khó nhất: chen giữa chủ ngữ và động từ là một danh từ khác có số ngược lại (athlete / managers), model phải bỏ qua danh từ đứng gần động từ hơn.</li>
+  </ul>
+  <div class="next">Tiếp: <b>đo circuit tốt hay không</b>.</div>
+</section>
+
+<section class="slide" data-g="4 · Tìm circuit" data-t="Faithfulness và completeness">
+  <div class="tag"><b>Nhóm 4</b> đánh giá · Figure 3</div>
+  <h2>Faithfulness, completeness</h2>
+  <div class="en">hai metric đánh giá circuit C</div>
+  <h3>Faithfulness: riêng circuit tái hiện được bao nhiêu phần hành vi</h3>
+  <p>Mean-ablate mọi node <em>ngoài</em> C, chạy model, đo m:</p>
+  <div class="eq">faithfulness = (m(C) − m(∅)) / (m(M) − m(∅))
+M = cả model,  ∅ = mean-ablate tất cả.   Lý tưởng = 1</div>
+  <h3>Completeness: circuit có bỏ sót gì không</h3>
+  <p>Faithfulness của phần bù <code>M \ C</code>: ablate các node <em>trong</em> C, giữ phần còn lại. Lý tưởng = 0, nghĩa là ablate circuit xong thì model không làm được task nữa.</p>
+  <h3>Kết quả</h3>
+  <div class="wrap"><table>
+    <tr><th></th><th class="n">Feature circuit</th><th class="n">Neuron circuit</th></tr>
+    <tr><td>Pythia-70M</td><td class="n">~100 node đã giải thích phần lớn hành vi</td><td class="n">~1 500 neuron mới giải thích được một nửa</td></tr>
+    <tr><td>Gemma-2-2B</td><td class="n">~500 node đã giải thích phần lớn hành vi</td><td class="n">~50 000 neuron mới giải thích được một nửa</td></tr>
+  </table></div>
+  <p class="note">Đánh giá trên test set, tách riêng với dữ liệu dùng để tìm circuit. Paper bỏ qua 1/3 số layer đầu khi đo, vì các layer này xử lý theo từng từ cụ thể, mà test set dùng những từ khác với train set.</p>
+  <div class="next">Tiếp: <b>circuit tìm được trông thế nào</b>.</div>
+</section>
+
+<section class="slide" data-g="4 · Tìm circuit" data-t="Case study: agreement across RC">
+  <div class="tag"><b>Nhóm 4</b> case study · §3.3, Figure 4</div>
+  <h2>Circuit cho agreement across RC</h2>
+  <div class="en">"The girl/girls that the teacher sees → has/have"</div>
+  <p>Paper chỉnh ngưỡng để có circuit nhỏ (Pythia: 86 node, Gemma: 223 node, faithfulness ≈ 0.21), rồi đọc và đặt tên cho từng feature. Circuit có hai đường truyền thông tin:</p>
+  <ol>
+    <li><b>Đường trực tiếp.</b> <em>Noun number detector</em> (layer đầu) bật trên "girls" và ghi nhận số nhiều. Thông tin này đi thẳng tới <em>verb form discriminator</em> ở layer cuối, làm tăng xác suất của "have".</li>
+    <li><b>Đường qua cuối mệnh đề.</b> <em>PP/RC detector</em> nhận ra "that" mở đầu relative clause. <em>PP/RC end detector</em> nhận ra "sees" kết thúc mệnh đề, và chuyển thông tin số của chủ ngữ tới vị trí này, nơi model dự đoán động từ.</li>
+  </ol>
+  <p>Gemma-2-2B có thêm <em>NP number tracker</em>: feature giữ số của danh từ chính, bật trên mọi token cho đến hết noun phrase (NP).</p>
+  <h3>Quan sát</h3>
+  <p>Circuit cho across RC và across PP trùng nhau phần lớn: model xử lý hai cấu trúc ngữ pháp khác nhau bằng cùng một cơ chế.</p>
+  <div class="next">Sang nhóm 5: <b>dùng circuit để sửa model</b>.</div>
+</section>
+
+<!-- ============ NHÓM 5 ============ -->
+<section class="slide" data-g="5 · SHIFT" data-t="Spurious correlation">
+  <div class="tag"><b>Nhóm 5</b> ứng dụng · §4</div>
+  <h2>Spurious correlation</h2>
+  <div class="en">§4 · Bias in Bios</div>
+  <p>Classifier dựa vào một đặc điểm có tương quan với nhãn trong dữ liệu train, nhưng đặc điểm đó không phải lý do thật sự quyết định nhãn. Gặp dữ liệu mà tương quan này không còn, classifier đoán sai.</p>
+  <div class="ex"><span class="k">Ví dụ trong paper</span>Phân loại nghề (professor / nurse) từ tiểu sử. Nếu dữ liệu train toàn giáo sư nam và y tá nữ, classifier chỉ cần đoán giới tính là đạt 100% accuracy.</div>
+  <h3>Các phương pháp trước</h3>
+  <p>Gần như đều cần <b>dữ liệu có nhãn tách bạch được hai yếu tố</b> (có giáo sư nữ, y tá nam) để biết classifier đang dựa vào cái nào.</p>
+  <h3>Paper hỏi</h3>
+  <p>Nếu không có dữ liệu như vậy, có thể loại thông tin không mong muốn khỏi classifier chỉ bằng cách đọc circuit không?</p>
+  <div class="next">Tiếp: <b>dataset</b>.</div>
+</section>
+
+<section class="slide" data-g="5 · SHIFT" data-t="Bias in Bios: ambiguous vs balanced">
+  <div class="tag"><b>Nhóm 5</b> ứng dụng · §4</div>
+  <h2>Bias in Bios</h2>
+  <div class="en">BiB · De-Arteaga et al., 2019</div>
+  <p>Dataset gồm các đoạn tiểu sử, mỗi đoạn có nhãn nghề và nhãn giới tính. Paper lấy mẫu ra hai tập:</p>
+  <div class="grid2">
+    <div><h4>Ambiguous set (dùng để train)</h4><ul><li>Giáo sư nam → nhãn 0</li><li>Y tá nữ → nhãn 1</li></ul><p class="note" style="margin-top:6px">Chỉ cần biết giới tính là đoán đúng nhãn 100%.</p></div>
+    <div><h4>Balanced set (dùng để test)</h4><ul><li>Giáo sư nam, giáo sư nữ</li><li>Y tá nam, y tá nữ</li></ul><p class="note" style="margin-top:6px">Số lượng bằng nhau. Biết giới tính không giúp gì cho việc đoán nghề.</p></div>
+  </div>
+  <p>Classifier: LM (Pythia hoặc Gemma) gắn thêm một linear classification head ở cuối, train trên ambiguous set.</p>
+  <h3>Worst-case setting</h3>
+  <p>Chỉ được dùng ambiguous set. Không có ví dụ nào tách được giới tính và nghề. Mục tiêu: classifier vẫn đoán đúng trên balanced set.</p>
+  <div class="next">Tiếp: <b>SHIFT</b>.</div>
+</section>
+
+<section class="slide" data-g="5 · SHIFT" data-t="SHIFT: 4 bước">
+  <div class="tag"><b>Nhóm 5</b> ứng dụng · §4</div>
+  <h2>SHIFT</h2>
+  <div class="en">Sparse Human-Interpretable Feature Trimming</div>
+  <ol>
+    <li><b>Tìm circuit</b> của classifier trên ambiguous set, metric <code>m = −log C(y|x)</code>, dùng zero-ablation. Pythia: 67 feature. Gemma: 46 feature.</li>
+    <li><b>Người đọc từng feature</b> trên Neuronpedia (các câu làm feature bật mạnh nhất, các token mà feature làm tăng xác suất) rồi quyết định feature đó có liên quan đến nghề hay không.</li>
+    <li><b>Ablate</b> (zero-ablation) các feature không liên quan. Pythia: 55/67. Gemma: 43/46. Ví dụ feature bị loại: feature bật trên các từ gắn với nữ giới trong tiểu sử của phụ nữ.</li>
+    <li><b>(Tuỳ chọn) Retrain</b> linear head trên ambiguous set, dùng activation của model đã ablate.</li>
+  </ol>
+  <p>Bước 3 có thể làm accuracy giảm vì mất bớt thông tin; bước 4 kéo accuracy lên lại. Vì feature giới tính đã bị ablate, retrain không học lại được tín hiệu giới tính.</p>
+  <p class="note">Bước 2 dùng thêm unlabeled data (corpus của Neuronpedia), nhưng không dùng thêm labeled data nào.</p>
+  <div class="next">Tiếp: <b>kết quả và baseline</b>.</div>
+</section>
+
+<section class="slide" data-g="5 · SHIFT" data-t="Kết quả SHIFT (Table 2)">
+  <div class="tag"><b>Nhóm 5</b> kết quả · Table 2 · đo trên balanced set</div>
+  <h2>Kết quả SHIFT</h2>
+  <div class="en">Prof. (nghề) ↑ · Gender (giới tính) ↓, 50 = không đoán được · Worst group ↑</div>
+  <div class="wrap"><table>
+    <tr><th>Method</th><th class="n">Pythia Prof.</th><th class="n">Pythia Gender</th><th class="n">Pythia Worst</th><th class="n">Gemma Prof.</th><th class="n">Gemma Gender</th><th class="n">Gemma Worst</th></tr>
+    <tr><td>Original</td><td class="n">61.9</td><td class="n">87.4</td><td class="n">24.4</td><td class="n">67.7</td><td class="n">81.9</td><td class="n">18.2</td></tr>
+    <tr><td>CBP</td><td class="n">83.3</td><td class="n">60.1</td><td class="n">67.7</td><td class="n">90.2</td><td class="n">50.1</td><td class="n">86.7</td></tr>
+    <tr><td>Random</td><td class="n">61.8</td><td class="n">87.5</td><td class="n">24.4</td><td class="n">67.3</td><td class="n">82.3</td><td class="n">18.0</td></tr>
+    <tr><td>SHIFT</td><td class="n">88.5</td><td class="n">54.0</td><td class="n">76.0</td><td class="n">76.0</td><td class="n">51.5</td><td class="n">50.0</td></tr>
+    <tr class="hl"><td>SHIFT + retrain</td><td class="n">93.1</td><td class="n">52.0</td><td class="n">89.0</td><td class="n">95.0</td><td class="n">52.4</td><td class="n">92.9</td></tr>
+    <tr><td>Neuron skyline</td><td class="n">75.5</td><td class="n">73.2</td><td class="n">41.5</td><td class="n">65.1</td><td class="n">84.3</td><td class="n">5.6</td></tr>
+    <tr><td>Feature skyline</td><td class="n">88.5</td><td class="n">54.3</td><td class="n">62.9</td><td class="n">80.8</td><td class="n">53.7</td><td class="n">56.7</td></tr>
+    <tr><td>Oracle</td><td class="n">93.0</td><td class="n">49.4</td><td class="n">91.9</td><td class="n">95.0</td><td class="n">50.6</td><td class="n">93.1</td></tr>
+  </table></div>
+  <p><b>Gender</b> là accuracy khi dùng classifier để đoán giới tính; 50 nghĩa là classifier không còn chứa thông tin giới tính. <b>Worst group</b> là accuracy về nghề thấp nhất trong 4 nhóm (nam/nữ × giáo sư/y tá).</p>
+  <p>SHIFT + retrain đạt mức của Oracle (classifier train trực tiếp trên balanced set), dù không hề dùng đến balanced set.</p>
+  <div class="next">Tiếp: <b>các baseline nghĩa là gì</b>.</div>
+</section>
+
+<section class="slide" data-g="5 · SHIFT" data-t="Baseline và skyline">
+  <div class="tag"><b>Nhóm 5</b> so sánh</div>
+  <h2>Baseline, skyline, oracle</h2>
+  <div class="en">các method so sánh trong Table 2</div>
+  <ul>
+    <li><b>CBP</b> (Concept Bottleneck Probing): probe chỉ được nhìn độ tương đồng giữa representation của input và một tập vector khái niệm định sẵn. Baseline từ công trình khác.</li>
+    <li><b>Random</b>: ablate cùng số feature nhưng chọn ngẫu nhiên. Kết quả gần như không đổi so với Original, cho thấy SHIFT có hiệu quả do <em>chọn đúng</em> feature chứ không do ablate nhiều.</li>
+    <li><b>SHIFT với neuron</b>: không làm được, vì nhìn neuron thì người đọc không biết nên xoá cái nào.</li>
+    <li><b>Neuron skyline</b>: được phép dùng balanced set (thứ SHIFT không được dùng) để tự động chọn 55/43 neuron có IE lớn nhất lên việc đoán giới tính, rồi ablate. Vẫn kém SHIFT, vì các neuron này polysemantic, xoá chúng làm mất luôn cả thông tin về nghề.</li>
+    <li><b>Feature skyline</b>: như trên nhưng với feature. SHIFT (người chọn, không thấy balanced set) đạt bằng hoặc gần bằng skyline này.</li>
+    <li><b>Oracle</b>: train trực tiếp trên balanced set. Đây là kết quả tốt nhất có thể đạt.</li>
+  </ul>
+  <p class="note">"Skyline" là cách làm được phép dùng thông tin mà phương pháp thật không có, để biết kết quả có thể tốt tới đâu.</p>
+  <div class="next">Sang nhóm 6: <b>tự động hóa, không cần người chọn task</b>.</div>
+</section>
+
+<!-- ============ NHÓM 6 ============ -->
+<section class="slide" data-g="6 · Unsupervised" data-t="Unsupervised pipeline">
+  <div class="tag"><b>Nhóm 6</b> quy mô lớn · §5</div>
+  <h2>Unsupervised circuit discovery</h2>
+  <div class="en">không cần người chọn hành vi</div>
+  <p>Nhóm 4 và 5 đều cần người chọn trước hành vi cần giải thích (subject-verb agreement, phân loại nghề). Các công trình circuit trước cũng vậy. Hệ quả: chỉ giải thích được những hành vi người nghiên cứu đã nghĩ tới.</p>
+  <h3>Pipeline của paper (Pythia-70M)</h3>
+  <div class="flow"><span>corpus lớn (The Pile)</span><i>→</i><span>clustering → hành vi</span><i>→</i><span>circuit cho từng cluster</span><i>→</i><span>hàng nghìn circuit</span></div>
+  <ol>
+    <li><b>Behavior discovery.</b> Coi corpus là tập cặp (context xᵢ, token tiếp theo yᵢ). Gán mỗi cặp một vector, gom cụm (clustering) các vector. Mỗi cluster là một hành vi.</li>
+    <li><b>Circuit discovery.</b> Với mỗi cluster, chạy thuật toán nhóm 4 với zero-ablation và metric <code>m = −log P(yᵢ | xᵢ)</code>.</li>
+  </ol>
+  <div class="next">Tiếp: <b>clustering bằng cách nào</b>.</div>
+</section>
+
+<section class="slide" data-g="6 · Unsupervised" data-t="Clustering behaviors (quanta)">
+  <div class="tag"><b>Nhóm 6</b> quy mô lớn · Michaud et al., 2023</div>
+  <h2>Clustering behaviors</h2>
+  <div class="en">quanta · gom các dự đoán dùng chung cơ chế</div>
+  <p>Mỗi cặp (xᵢ, yᵢ) được gán vector:</p>
+  <div class="eq">vᵢ = ∇_θ log P_θ(yᵢ | xᵢ)     # gradient theo tham số θ của model</div>
+  <p>Nếu hai dự đoán có gradient giống nhau thì chúng phụ thuộc vào cùng một nhóm tham số, nên nhiều khả năng dùng chung một cơ chế. Gom cụm các gradient này (spectral clustering). Paper cũng thử dùng SAE activation hoặc gradient theo SAE feature thay cho gradient theo tham số (App. G).</p>
+  <h3>Ví dụ cluster (Figure 5)</h3>
+  <ul>
+    <li><b>Cluster 382, dãy tăng dần</b>: <code>1, 2, 3, 4, 5, 6, 7, 8</code> → 9; <code>Step 1 … Step 3 …</code> → Step 4.</li>
+    <li><b>Cluster 475, đoán "to" trước động từ nguyên mẫu</b>: <code>whether the defendant should be allowed</code> → to.</li>
+  </ul>
+  <p class="note">Michaud et al. gọi mỗi cluster là một "quantum": một kỹ năng riêng lẻ mà model học được.</p>
+  <div class="next">Tiếp: <b>circuit của các cluster cho thấy gì</b>.</div>
+</section>
+
+<section class="slide" data-g="6 · Unsupervised" data-t="Kết quả: induction, succession">
+  <div class="tag"><b>Nhóm 6</b> kết quả</div>
+  <h2>Induction, succession feature</h2>
+  <div class="en">feature xuất hiện trong các circuit tìm tự động</div>
+  <div class="grid2">
+    <div><h4>Cluster 382 (dãy tăng dần)</h4><ul><li><b>Succession feature</b>: nhận ra một phần tử trong dãy có thứ tự (1, A, I, Chapter 1) và tăng logit của phần tử kế tiếp.</li><li><b>Narrow induction feature</b>: khi gặp lại "A" sau "A3" ở trước đó, chép thông tin của token "3" sang vị trí hiện tại.</li><li>Hai loại kết hợp: A3 … A → 4.</li></ul></div>
+    <div><h4>Cluster 475 ("to")</h4><ul><li>Một feature làm tăng logit "to" sau những động từ hay đi với "to + động từ nguyên mẫu" (allowed, asked).</li><li>Một feature khác bật trên tân ngữ của động từ/giới từ và tăng logit "to" làm bổ ngữ.</li></ul></div>
+  </div>
+  <h3>Hai kết luận</h3>
+  <ul>
+    <li>Pipeline tự động tìm lại được <b>induction</b> và <b>succession</b>, hai hiện tượng trước đây chỉ được nghiên cứu ở mức attention head với dữ liệu do người nghiên cứu tự soạn.</li>
+    <li>Có cluster tưởng chỉ ứng với một cơ chế, nhưng circuit cho thấy nó <b>gồm nhiều cơ chế</b> khác nhau.</li>
+  </ul>
+  <p>Toàn bộ cluster và circuit: <code>feature-circuits.xyz</code>. Paper ghi nhận việc đánh giá định lượng các cluster và circuit này vẫn là bài toán mở.</p>
+  <div class="next">Slide cuối: <b>ghép tất cả lại</b>.</div>
+</section>
+
+<!-- ============ TỔNG HỢP ============ -->
+<section class="slide" data-g="Tổng hợp" data-t="Paper làm gì, từ đầu đến cuối">
+  <div class="tag"><b>Tổng hợp</b></div>
+  <h2>Paper làm gì, từ đầu đến cuối</h2>
+  <div class="en">mỗi bước dùng keyword của nhóm nào</div>
+  <div class="wrap"><table>
+    <tr><th>Bước</th><th>Nội dung</th><th>Nhóm</th></tr>
+    <tr><td>Vấn đề</td><td>Các circuit trước đây dùng head/neuron, vốn polysemantic nên khó hiểu. Các phương pháp dùng unit nhỏ hơn lại đòi hỏi người nghiên cứu đưa ra giả thuyết trước.</td><td class="n">1</td></tr>
+    <tr><td>Unit</td><td>Dùng SAE phân rã activation thành feature sparse, interpretable. Giữ SAE error thành một node để output của model không bị thay đổi.</td><td class="n">2</td></tr>
+    <tr><td>Đo</td><td>Indirect effect đo causal effect. AtP / IG ước lượng IE cho mọi node bằng vài forward + backward.</td><td class="n">3</td></tr>
+    <tr><td>Phương pháp</td><td>Coi feature và error là node trong computation graph, tính IE cho node và edge, lọc theo ngưỡng → sparse feature circuit.</td><td class="n">4</td></tr>
+    <tr><td>Kiểm chứng</td><td>Subject-verb agreement: ~100 feature (Pythia) đã giải thích phần lớn hành vi, trong khi ~1 500 neuron mới giải thích được một nửa. Người đọc hiểu được circuit.</td><td class="n">4</td></tr>
+    <tr><td>Ứng dụng 1</td><td>SHIFT: người đọc circuit, ablate feature giới tính, retrain → accuracy về nghề 93.1% trên balanced set, bằng Oracle, không cần dữ liệu có nhãn tách hai tín hiệu.</td><td class="n">5</td></tr>
+    <tr><td>Ứng dụng 2</td><td>Gom cụm các dự đoán trong corpus thành từng hành vi, rồi tự tìm circuit cho hàng nghìn hành vi.</td><td class="n">6</td></tr>
+  </table></div>
+  <h3>Đóng góp, một câu</h3>
+  <p>Paper đổi unit của circuit từ head/neuron sang SAE feature, đưa ra cách tính circuit đó ở quy mô lớn bằng xấp xỉ tuyến tính (AtP/IG), và cho thấy circuit loại này dùng được để sửa hành vi của model.</p>
+</section>
+
+</main>
+
+<nav class="bar" aria-label="Điều hướng slide">
+  <button id="menuBtn" type="button" aria-label="Danh sách slide">☰</button>
+  <button id="prev" type="button" aria-label="Slide trước">←</button>
+  <button id="next" type="button" aria-label="Slide sau">→</button>
+  <div class="progress"><div id="prog"></div></div>
+  <span class="hint">← → · M</span>
+  <span class="count" id="count"></span>
+</nav>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="menu" id="menu" aria-label="Danh sách slide"></aside>
+
+<script>
+(function () {
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var stage = document.getElementById('stage');
+  var menu = document.getElementById('menu');
+  var scrim = document.getElementById('scrim');
+  var i = 0;
+
+  // dựng danh sách slide theo nhóm
+  var lastG = null;
+  slides.forEach(function (s, k) {
+    var g = s.dataset.g;
+    if (g !== lastG) {
+      var h = document.createElement('h5'); h.textContent = g; menu.appendChild(h); lastG = g;
+    }
+    var a = document.createElement('a');
+    a.href = '#' + (k + 1);
+    a.textContent = (k + 1) + '. ' + s.dataset.t;
+    a.addEventListener('click', function (e) { e.preventDefault(); go(k); toggle(false); });
+    menu.appendChild(a);
+  });
+  var links = menu.querySelectorAll('a');
+
+  function go(n) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach(function (s, k) { s.classList.toggle('on', k === i); });
+    links.forEach(function (a, k) { a.classList.toggle('cur', k === i); });
+    document.getElementById('count').textContent = (i + 1) + ' / ' + slides.length;
+    document.getElementById('prog').style.width = ((i + 1) / slides.length * 100) + '%';
+    stage.scrollTop = 0;
+    try { history.replaceState(null, '', '#' + (i + 1)); } catch (e) {}
+  }
+  function toggle(open) {
+    var o = open === undefined ? !menu.classList.contains('open') : open;
+    menu.classList.toggle('open', o);
+    scrim.hidden = !o;
+  }
+
+  document.getElementById('prev').onclick = function () { go(i - 1); };
+  document.getElementById('next').onclick = function () { go(i + 1); };
+  document.getElementById('menuBtn').onclick = function () { toggle(); };
+  scrim.onclick = function () { toggle(false); };
+  document.addEventListener('keydown', function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); go(i + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(i - 1); }
+    else if (e.key === 'Home') go(0);
+    else if (e.key === 'End') go(slides.length - 1);
+    else if (e.key === 'm' || e.key === 'M') toggle();
+    else if (e.key === 'Escape') toggle(false);
+  });
+
+  var start = parseInt(location.hash.slice(1), 10);
+  go(isNaN(start) ? 0 : start - 1);
+})();
+</script>
+</body>
+</html>

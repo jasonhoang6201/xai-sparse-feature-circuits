@@ -1,0 +1,2 @@
+- [Term language in Vietnamese text](keep-technical-terms-english.md) — keep domain terms (interpretability, feature, circuit…) English; translate common words (giả thuyết, hành vi, ngưỡng…)
+- [One concept at a time](one-concept-at-a-time.md) — explain one concept per reply, wait for confirmation before the next
