@@ -49,9 +49,16 @@ The user studies the paper keyword by keyword using `keywords-slides.html`, read
 - Pythia-70M: 6 layers × 3 spots + 1 embedding = **19 SAEs**.
 - Gemma-2-2B uses Gemma Scope SAEs: 26 layers, width 16384, no embedding SAE. Its attention and MLP SAEs sit at different points than in Pythia (input to the attention out-projection, and after the post-MLP LayerNorm). This has not been told to the user yet.
 
+### 6. Slide 5: the two models, circuit, node
+- Paper analyzes Pythia-70M and Gemma-2-2B.
+- Circuit = small graph of nodes and edges that causes ONE specific behavior; keeps only nodes with large effect on output; not a single path.
+- Node = one unit (feature in the paper, neuron in the baseline) at a specific layer/spot and token position. Not necessarily a neuron.
+- Feature was introduced briefly (a weighted combination of neurons = a direction, learned by an SAE attached outside the model). The user found it hard; it is deferred to group 2. For now the user only needs: neuron is a real component, feature is a way of reading neuron values.
+
 ## Next concept (resume here)
-- **What an SAE is**: encoder → sparse feature activations → decoder reconstructs x. See deck group "2 SAE".
-- Start with: "Lần trước mình dừng ở ba vị trí đặt SAE. Hôm nay: SAE là gì."
+- The user is still in group "1 Bối cảnh". Do NOT jump ahead to group 2.
+- Next: **slide 6: Neuron**, then slide 7 Polysemantic, and so on in deck order.
+- SAE (group 2) comes after group 1 is finished.
 
 ## Key numbers from the paper (verified)
 - Circuit size: Pythia 86 nodes, Gemma 223 nodes. Faithfulness ≈ 0.21.
