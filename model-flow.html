@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Một layer từng bước</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f7f6f2;--card:#fff;--ink:#1d1d1f;--mute:#6b6b70;--line:#dcdad3;--hi:#c0392b;--hibg:#fdecea}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Be Vietnam Pro",sans-serif;line-height:1.55}
+main{max-width:1280px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:24px;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 16px}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px}
+.scroll{overflow-x:auto}
+svg{display:block;min-width:1000px;width:100%;height:auto}
+svg text{font-family:"Be Vietnam Pro",sans-serif}
+svg .num{font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:600}
+[data-s]{transition:opacity .25s}
+.nav{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.nav button{font:inherit;font-size:15px;padding:7px 16px;border-radius:8px;border:2px solid var(--ink);background:#fff;cursor:pointer}
+.nav button:disabled{opacity:.3;cursor:default}
+.dots{display:flex;gap:6px}
+.dots span{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer}
+.dots span.on{background:var(--hi);border-color:var(--hi);color:#fff}
+.explain{border-left:4px solid var(--hi);background:var(--hibg);padding:12px 16px;border-radius:0 8px 8px 0;font-size:16px;min-height:110px}
+.explain h3{margin:0 0 6px;font-size:17px}
+.explain .mono{font-family:"JetBrains Mono",monospace;font-size:14px}
+.terms{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.terms div{border:1px solid var(--line);border-radius:10px;padding:12px;font-size:14px}
+.terms b{font-size:15px}
+</style>
+</head>
+<body>
+<main>
+<h1>Câu "a b c d e" đi qua một layer, từng bước</h1>
+<p class="sub">Model đồ chơi: mỗi vector có <b>4 số</b> (Pythia: 512), MLP có <b>6 hidden neuron</b> (Pythia: 2048). Theo dõi token <b>c</b>. Mỗi hình tròn là <b>một neuron</b>, số bên trong là giá trị của nó. Mọi con số là minh họa.</p>
+
+<section>
+  <div class="nav">
+    <button id="prev">← Trước</button>
+    <div class="dots" id="dots"></div>
+    <button id="next">Tiếp →</button>
+  </div>
+  <div class="explain" id="explain"></div>
+  <div class="scroll" style="margin-top:12px"><svg id="svg" viewBox="0 0 1260 600"></svg></div>
+</section>
+
+<section>
+  <div class="terms">
+    <div><b>Neuron</b><br>Một hình tròn = một con số trong một vector. Mỗi cột tròn là một vector.</div>
+    <div><b>Activation</b><br>Tên gọi cho <b>các giá trị</b> trong các cột tròn. Không phải một bước tính. Đổi theo từng token.</div>
+    <div><b>Activation function (GELU)</b><br>Một <b>bước tính</b>, chỉ nằm bên trong MLP (bước 6). Khác với "activation" ở trên.</div>
+    <div><b>Weight</b><br>Bảng embedding, các đường nối xám giữa hai cột tròn trong MLP, và các ma trận bên trong khối Attention. Cố định sau khi train.</div>
+    <div><b>Layer</b><br>Khung nét đứt: Attention + ⊕ + MLP + ⊕. Pythia có 6 layer giống hệt nhau về cấu trúc, mỗi layer có weight riêng.</div>
+    <div><b>Residual connection (⊕)</b><br>Phép cộng từng tọa độ. Không có weight, không có activation function.</div>
+  </div>
+</section>
+</main>
+
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('svg');
+function mk(tag, attrs, text, steps){
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined && text !== null) e.textContent = text;
+  if (steps) e.setAttribute('data-s', steps.join(','));
+  svg.appendChild(e); return e;
+}
+
+const EMB = {a:[0.2, 1.0, -0.5, 0.3], b:[-1.0, 0.5, 0.0, 1.0], c:[1.0, 0.0, 2.0, -1.0], d:[0.0, -0.5, 1.0, 0.5], e:[0.5, 0.5, -1.0, 0.0]};
+const X    = EMB.c;
+const ATT  = [0.5, 1.0, 0.0, -0.5];
+const MID  = [1.5, 1.0, 2.0, -1.5];
+const PRE  = [2.0, -1.0, 0.5, -2.0, 1.0, 0.0];
+const POST = [1.95, -0.16, 0.35, -0.05, 0.84, 0.0];
+const MLPO = [0.0, 0.5, -1.0, 1.0];
+const OUT  = [1.5, 1.5, 1.0, -0.5];
+
+const ys = n => n === 4 ? [296, 352, 408, 464] : [265, 311, 357, 403, 449, 495];
+const COL = {x:330, att:550, mid:680, pre:800, post:900, mlpo:1020, out:1160};
+
+function column(cx, vals, color, steps, label, dec){
+  const y = ys(vals.length);
+  vals.forEach((v, i) => {
+    mk('circle', {cx, cy:y[i], r:19, fill:'#fff', stroke:color, 'stroke-width':2.5}, null, steps);
+    mk('text', {x:cx, y:y[i]+4, 'text-anchor':'middle', class:'num'}, v.toFixed(dec), steps);
+  });
+  label.forEach((ln, k) => mk('text', {x:cx, y:540 + k*15, 'text-anchor':'middle', 'font-size': k ? 11 : 12, 'font-weight': k ? 400 : 700, fill:color}, ln, steps));
+}
+function arrow(d, steps, color){ mk('path', {d, fill:'none', stroke:color || '#999', 'stroke-width':1.6, 'marker-end':'url(#ar)'}, null, steps); }
+
+function draw(){
+  svg.innerHTML = '<defs><marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#999"/></marker></defs>';
+
+  // step 1: sentence split into tokens
+  mk('text', {x:40, y:22, 'font-size':13, 'font-weight':700}, 'Câu đầu vào, tách thành token', [1]);
+  'abcde'.split('').forEach((t, i) => {
+    const x = 40 + i*52;
+    mk('rect', {x, y:32, width:42, height:30, rx:6, fill: t === 'c' ? '#fdecea' : '#fff', stroke: t === 'c' ? '#c0392b' : '#999', 'stroke-width':2}, null, [1]);
+    mk('text', {x:x+21, y:52, 'text-anchor':'middle', 'font-size':15, 'font-weight':700}, t, [1]);
+  });
+
+  // step 2: embedding table lookup
+  mk('text', {x:40, y:98, 'font-size':13, 'font-weight':700}, 'Bảng embedding W_E (weight)', [2]);
+  'abcde'.split('').forEach((t, r) => {
+    const y = 108 + r*26;
+    mk('text', {x:48, y:y+16, 'text-anchor':'middle', 'font-size':13, 'font-weight':700, fill: t === 'c' ? '#c0392b' : '#555'}, t, [2]);
+    EMB[t].forEach((v, k) => {
+      mk('rect', {x:62 + k*44, y, width:42, height:22, fill: t === 'c' ? '#fdecea' : '#f2f2f2', stroke: t === 'c' ? '#c0392b' : '#ccc'}, null, [2]);
+      mk('text', {x:83 + k*44, y:y+15, 'text-anchor':'middle', class:'num'}, v.toFixed(1), [2]);
+    });
+  });
+  arrow('M145 62 L145 104', [1, 2], '#c0392b');
+  arrow('M240 172 C300 172 330 220 330 270', [2], '#c0392b');
+
+  // layer frame
+  mk('rect', {x:300, y:200, width:930, height:385, rx:14, fill:'none', stroke:'#bbb', 'stroke-dasharray':'7 5'}, null, [3,4,5,6,7,8]);
+  mk('text', {x:1215, y:222, 'text-anchor':'end', 'font-size':14, 'font-weight':700, fill:'#888'}, 'Layer 0', [3,4,5,6,7,8]);
+
+  column(COL.x, X, '#555', [2, 3, 4], ['x', 'vector của token c'], 1);
+
+  // attention block
+  mk('rect', {x:395, y:280, width:100, height:200, rx:10, fill:'#f5f8ff', stroke:'#2f6fdf', 'stroke-width':2}, null, [3]);
+  ['Attention', '', 'đọc a, b, c', '(token trước', 'và chính nó)', '', 'weight bên trong:', 'W_Q W_K', 'W_V W_O'].forEach((ln, i) =>
+    mk('text', {x:445, y:304 + i*17, 'text-anchor':'middle', 'font-size': i ? 11 : 13, 'font-weight': i ? 400 : 700, fill:'#2f6fdf'}, ln, [3]));
+  ys(4).forEach(y => arrow(`M350 ${y} L392 ${y}`, [3]));
+  ys(4).forEach(y => arrow(`M495 ${y} L528 ${y}`, [3]));
+  column(COL.att, ATT, '#2f6fdf', [3, 4], ['attention output', 'paper đọc ở đây'], 1);
+
+  // first residual connection
+  mk('path', {d:'M330 276 C330 225 615 225 615 362', fill:'none', stroke:'#2e9a5b', 'stroke-width':2, 'stroke-dasharray':'5 4', 'marker-end':'url(#ar)'}, null, [4]);
+  mk('text', {x:472, y:236, 'text-anchor':'middle', 'font-size':11, fill:'#2e9a5b'}, 'residual connection: x đi vòng qua attention', [4]);
+  arrow('M570 380 L596 380', [4]);
+  mk('circle', {cx:615, cy:380, r:16, fill:'#fff', stroke:'#2e9a5b', 'stroke-width':2}, null, [4]);
+  mk('text', {x:615, y:386, 'text-anchor':'middle', 'font-size':18, fill:'#2e9a5b'}, '+', [4]);
+  arrow('M631 380 L660 380', [4]);
+  column(COL.mid, MID, '#2e9a5b', [4, 5], ['x + attention', ''], 1);
+
+  // MLP frame
+  mk('rect', {x:752, y:244, width:300, height:330, rx:12, fill:'#fdf6ee', stroke:'#d9822b', 'stroke-dasharray':'6 4'}, null, [5, 6, 7]);
+  mk('text', {x:902, y:262, 'text-anchor':'middle', 'font-size':13, 'font-weight':700, fill:'#d9822b'}, 'MLP', [5, 6, 7]);
+
+  // W1 lines: every input neuron connects to every hidden neuron
+  ys(4).forEach(y1 => ys(6).forEach(y2 => mk('line', {x1:COL.mid+19, y1, x2:COL.pre-19, y2, stroke:'#bbb', 'stroke-width':1}, null, [5])));
+  mk('text', {x:740, y:250, 'text-anchor':'middle', 'font-size':11, fill:'#888'}, 'W₁: 4 × 6 = 24 weight', [5]);
+  column(COL.pre, PRE, '#d9822b', [5, 6], ['hidden neuron', 'trước GELU'], 1);
+
+  // GELU one-to-one
+  ys(6).forEach(y => arrow(`M${COL.pre+19} ${y} L${COL.post-21} ${y}`, [6], '#d9822b'));
+  mk('text', {x:850, y:286, 'text-anchor':'middle', 'font-size':11, 'font-weight':700, fill:'#d9822b'}, 'GELU', [6]);
+  column(COL.post, POST, '#d9822b', [6, 7], ['hidden neuron', 'sau GELU'], 2);
+
+  // W2 lines
+  ys(6).forEach(y1 => ys(4).forEach(y2 => mk('line', {x1:COL.post+19, y1, x2:COL.mlpo-19, y2, stroke:'#bbb', 'stroke-width':1}, null, [7])));
+  mk('text', {x:960, y:250, 'text-anchor':'middle', 'font-size':11, fill:'#888'}, 'W₂: 6 × 4 = 24 weight', [7]);
+  column(COL.mlpo, MLPO, '#d9822b', [7, 8], ['MLP output', 'paper đọc ở đây'], 1);
+
+  // second residual connection
+  mk('path', {d:'M680 276 C680 212 1085 212 1085 362', fill:'none', stroke:'#2e9a5b', 'stroke-width':2, 'stroke-dasharray':'5 4', 'marker-end':'url(#ar)'}, null, [8]);
+  mk('text', {x:1110, y:236, 'text-anchor':'middle', 'font-size':11, fill:'#2e9a5b'}, 'đi vòng qua MLP', [8]);
+  arrow('M1040 380 L1066 380', [8]);
+  mk('circle', {cx:1085, cy:380, r:16, fill:'#fff', stroke:'#2e9a5b', 'stroke-width':2}, null, [8]);
+  mk('text', {x:1085, y:386, 'text-anchor':'middle', 'font-size':18, fill:'#2e9a5b'}, '+', [8]);
+  arrow('M1101 380 L1138 380', [8]);
+  column(COL.out, OUT, '#2e9a5b', [8], ['residual stream', 'cuối layer 0'], 1);
+  arrow('M1180 380 L1250 380', [8], '#2e9a5b');
+  mk('text', {x:1215, y:370, 'text-anchor':'middle', 'font-size':11, 'font-weight':700, fill:'#2e9a5b'}, 'vào layer 1', [8]);
+}
+
+const STEPS = [
+  {t:'1. Tách câu thành token', h:'Câu "a b c d e" được tách thành 5 token. Mỗi token sẽ có vector riêng và đi qua model song song. Ta theo dõi token <b>c</b>.'},
+  {t:'2. Embedding: tra bảng', h:'Lấy hàng <b>c</b> trong bảng embedding: <span class="mono">x = [1.0, 0.0, 2.0, −1.0]</span>. Bảng là <b>weight</b>. Vector x có 4 số, tức <b>4 neuron</b>. Giá trị của 4 neuron này gọi là <b>activation</b>. Không có bước "activation" riêng nào cả: hễ có vector trong model thì các số trong đó là activation.'},
+  {t:'3. Attention', h:'Attention đọc vector của a, b và c (token trước và chính nó), trộn lại theo attention weight, rồi nhân với W_O. Kết quả là attention output <span class="mono">[0.5, 1.0, 0.0, −0.5]</span>, cũng 4 neuron. Paper đọc vector này (chỗ đọc 1).'},
+  {t:'4. Residual connection thứ nhất', h:'Cộng từng tọa độ: <span class="mono">x + attention = [1.0+0.5, 0.0+1.0, 2.0+0.0, −1.0−0.5] = [1.5, 1.0, 2.0, −1.5]</span>. Không có weight, không có activation function.'},
+  {t:'5. MLP, nhân W₁', h:'Mỗi đường xám là <b>một weight</b>. Mỗi hidden neuron nhận 4 đường từ 4 neuron bên trái, tức là một hàng 4 weight. Ví dụ hidden neuron 1 = w₁·1.5 + w₂·1.0 + w₃·2.0 + w₄·(−1.5) = 2.0. 6 hidden neuron × 4 = 24 weight.'},
+  {t:'6. MLP, activation function GELU', h:'GELU áp lên <b>từng</b> hidden neuron riêng lẻ, không trộn các neuron: 2.0 → 1.95, −1.0 → −0.16, 0.5 → 0.35… Đây là <b>activation function duy nhất</b> trong layer, và nó nằm bên trong MLP.'},
+  {t:'7. MLP, nhân W₂', h:'Mỗi neuron của MLP output nhận 6 đường từ 6 hidden neuron (một hàng 6 weight). Kết quả: MLP output <span class="mono">[0.0, 0.5, −1.0, 1.0]</span>. Paper đọc vector này (chỗ đọc 2).'},
+  {t:'8. Residual connection thứ hai, ra khỏi layer', h:'<span class="mono">[1.5, 1.0, 2.0, −1.5] + [0.0, 0.5, −1.0, 1.0] = [1.5, 1.5, 1.0, −0.5]</span>. Đây là residual stream cuối layer 0 (chỗ đọc 3 của paper). Vector này <b>đi thẳng vào layer 1</b>, không qua activation function nào nữa. Layer 1 lặp lại bước 3 → 8.'},
+];
+let step = 1;
+const dots = document.getElementById('dots');
+STEPS.forEach((s, i) => { const d = document.createElement('span'); d.textContent = i+1; d.onclick = () => { step = i+1; render(); }; dots.appendChild(d); });
+function render(){
+  svg.querySelectorAll('[data-s]').forEach(el => {
+    const ss = el.getAttribute('data-s').split(',').map(Number);
+    el.style.opacity = ss.includes(step) ? 1 : (Math.min(...ss) < step ? 0.35 : 0.08);
+  });
+  [...dots.children].forEach((d, i) => d.classList.toggle('on', i+1 === step));
+  document.getElementById('explain').innerHTML = `<h3>${STEPS[step-1].t}</h3>${STEPS[step-1].h}`;
+  document.getElementById('prev').disabled = step === 1;
+  document.getElementById('next').disabled = step === STEPS.length;
+}
+document.getElementById('prev').onclick = () => { step--; render(); };
+document.getElementById('next').onclick = () => { step++; render(); };
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' && step < STEPS.length){ step++; render(); }
+  if (e.key === 'ArrowLeft' && step > 1){ step--; render(); }
+});
+draw(); render();
+</script>
+</body>
+</html>

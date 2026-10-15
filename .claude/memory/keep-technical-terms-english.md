@@ -16,6 +16,4 @@ When writing Vietnamese explanations:
 
 **How to apply:** this applies to chat answers and to generated files. Translate the word when a Vietnamese reader knows it without context; otherwise keep it in English.
 
-**Use the standard ML vocabulary, never a home-made Vietnamese description of it.** Say "linear layer", "weight matrix", "dot product", "projection", "hidden layer", "embedding matrix", "forward pass", "loss", "gradient descent", "activation function", not "lớp nhân", "phép nhân từng tọa độ rồi cộng", "đọc khái niệm ra". The user said: "cứ dùng thuật ngữ hay các tưởng tượng của người trong ngành AI, vì nếu bạn nói lớp nhân hay gì đó thì nó k chuyên ngành và k hợp lí... dùng ngôn ngữ phổ thông của người trong ngành AI thì nói chuyện người khác mới hiểu được". Goal: the user must be able to talk with other ML people using these words. A short Vietnamese gloss after the term is fine the first time.
-
 **Translate by meaning, not word for word.** The user rejected "không cần người viết giả thuyết trước" and wanted "người nghiên cứu không phải đưa ra giả thuyết từ trước". Write each sentence the way a Vietnamese person would say it: add the subject and connecting words, and rearrange the clause order when the result reads more naturally. Never map English → Vietnamese one word at a time.

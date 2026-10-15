@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Node và feature</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f7f6f2;--card:#fff;--ink:#1d1d1f;--mute:#6b6b70;--line:#dcdad3;--hi:#c0392b;--hibg:#fdecea;
+  --attn:#2f6fdf;--mlp:#d9822b;--res:#2e9a5b;--sae:#8e44ad}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Be Vietnam Pro",sans-serif;line-height:1.55}
+main{max-width:1180px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:24px;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 16px}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:18px}
+h2{font-size:19px;margin:0 0 8px}
+p{margin:6px 0}
+.mono{font-family:"JetBrains Mono",monospace}
+.hint{color:var(--mute);font-size:14px}
+.def{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.def>div{border:1px solid var(--line);border-radius:10px;padding:14px}
+.def h3{margin:0 0 6px;font-size:16px}
+.modes{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.modes button{font:inherit;font-size:14px;padding:7px 13px;border-radius:18px;border:2px solid var(--c,#1d1d1f);background:#fff;color:var(--c,#1d1d1f);cursor:pointer;text-align:left}
+.modes button small{display:block;font-size:11px;opacity:.8}
+.modes button.on{background:var(--c,#1d1d1f);color:#fff}
+.scroll{overflow-x:auto}
+svg{display:block;min-width:860px;width:100%;height:auto}
+svg text{font-family:"Be Vietnam Pro",sans-serif}
+svg .num{font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:600}
+.info{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin-top:12px}
+.info>div{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px}
+.info b.k{display:block;color:var(--mute);font-weight:600;font-size:12px}
+.concl{border-left:4px solid var(--hi);background:var(--hibg);padding:10px 14px;border-radius:0 8px 8px 0;margin-top:12px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}
+td.n{font-family:"JetBrains Mono",monospace;white-space:nowrap}
+tr.paper td{background:#f8f1fb}
+.eq{font-family:"JetBrains Mono",monospace;background:#f5f5f2;border-radius:8px;padding:10px 12px;font-size:14px;overflow-x:auto;white-space:pre}
+@media (max-width:760px){.def{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<h1>Node là gì, feature là gì, và mỗi nghiên cứu chọn node ra sao</h1>
+<p class="sub">Dùng lại model đồ chơi ở <span class="mono">model-flow.html</span>: mỗi vector có 4 số, theo dõi token <b>c</b>, vẽ 1 layer. Số trong Pythia ghi bên cạnh.</p>
+
+<section>
+  <h2>1. Hai định nghĩa</h2>
+  <div class="def">
+    <div>
+      <h3>Node</h3>
+      <p>Một <b>đại lượng tính ra trong lúc model chạy</b>, tại <b>một layer</b> và <b>một vị trí token</b>, mà người nghiên cứu có thể thay giá trị của nó để xem output đổi bao nhiêu.</p>
+      <p>Circuit = tập node có ảnh hưởng lớn + edge giữa chúng.</p>
+      <p><b>Đại lượng nào được làm node là do người nghiên cứu chọn.</b> Đó là "scope" của node, và mỗi nghiên cứu chọn khác nhau (mục 2).</p>
+    </div>
+    <div>
+      <h3>Feature</h3>
+      <p>Một <b>hướng</b> <span class="mono">vᵢ</span> trong không gian activation, do SAE học ra. Trong Pythia, mỗi hướng có 512 số; mỗi chỗ đặt SAE có <b>32 768</b> hướng như vậy (64 × 512).</p>
+      <p><b>Feature activation</b> <span class="mono">fᵢ ≥ 0</span>: <b>1 con số</b> cho mỗi token, cho biết hướng đó có mặt mạnh hay yếu trong vector. Phần lớn bằng 0 (sparse).</p>
+      <p>Đây chính là các hướng khái niệm ở bài superposition, giờ được SAE tìm lại.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>2. Cùng một layer, mỗi cách chọn node khoanh ra những gì</h2>
+  <p>Bấm từng cách. Khung đỏ = <b>một node</b>. Phần mờ = không được dùng làm node trong cách đó.</p>
+  <div class="modes" id="modes"></div>
+  <div class="scroll"><svg id="svg" viewBox="0 0 900 400"></svg></div>
+  <div class="info" id="info"></div>
+  <div class="concl" id="concl"></div>
+</section>
+
+<section>
+  <h2>3. Feature và error node tính ra thế nào (cột residual stream ở hình trên)</h2>
+  <p>SAE nhận vector residual stream <span class="mono">x = [1.5, 1.5, 1.0, −0.5]</span> và trả về 8 feature activation (đồ chơi; Pythia: 32 768). Chỉ 2 cái khác 0:</p>
+  <div class="eq">f = [0, 0, 2.0, 0, 0, 0, 0.7, 0]
+
+v₃ ("danh từ số nhiều")   = [0.50, 0.50, 0.50, −0.50]
+v₇ ("trong cụm danh từ")  = [0.71, 0.71, 0.00,  0.00]
+
+x̂ = 2.0 · v₃ + 0.7 · v₇  = [1.00, 1.00, 1.00, −1.00] + [0.50, 0.50, 0.00, 0.00]
+                          = [1.50, 1.50, 1.00, −1.00]
+
+ε = x − x̂                 = [1.5, 1.5, 1.0, −0.5] − [1.5, 1.5, 1.0, −1.0]
+                          = [0.0, 0.0, 0.0,  0.5]      ← phần SAE không giải thích được</div>
+  <p>Node của paper ở chỗ này: <b>mỗi feature activation fᵢ</b> là một node (1 số), cộng thêm <b>1 error node ε</b> (cả vector phần dư). Paper vẽ feature bằng hình chữ nhật, error bằng hình tam giác. Paper giữ error node trong circuit thay vì bỏ đi, để không làm mất phần tính toán mà SAE chưa bắt được.</p>
+  <p class="hint">Tên feature trong ngoặc là minh họa. Trong paper, tên feature do người đọc đặt sau khi xem các câu làm feature đó bật mạnh.</p>
+</section>
+
+<section>
+  <h2>4. Tóm tắt</h2>
+  <div class="scroll"><table style="min-width:820px">
+    <tr><th>Cách chọn node</th><th>Ví dụ nghiên cứu</th><th>Một node gồm</th><th>Số node / layer / token (Pythia)</th><th>Người đọc hiểu node?</th><th>Cần giả thuyết trước?</th></tr>
+    <tr><td>Cả module</td><td>MLP trong factual recall (Meng et al., 2022)</td><td class="n">512 số</td><td class="n">2</td><td>Không, polysemantic</td><td>Không</td></tr>
+    <tr><td>Attention head</td><td>Induction heads (Olsson 2022), IOI (Wang 2023)</td><td class="n">64 số</td><td class="n">8 head</td><td>Thường không, polysemantic</td><td>Không</td></tr>
+    <tr><td>Neuron</td><td>Baseline trong paper này</td><td class="n">1 số</td><td class="n">3 × 512 = 1 536</td><td>Không, polysemantic</td><td>Không</td></tr>
+    <tr><td>Hướng do người chọn</td><td>Linear probing và các phương pháp có giám sát</td><td class="n">1 số</td><td class="n">bằng số giả thuyết</td><td>Có</td><td><b>Có</b>, và cần dữ liệu có nhãn</td></tr>
+    <tr class="paper"><td><b>SAE feature + SAE error</b></td><td><b>Paper này</b></td><td class="n">feature: 1 số<br>error: cả vector dư</td><td class="n">3 × 32 768 feature<br>+ 3 error</td><td>Feature: phần lớn có<br>Error: không</td><td>Không</td></tr>
+  </table></div>
+  <p class="hint">Paper muốn cả hai cột cuối đều tốt: node hiểu được (như probing) mà không cần giả thuyết trước (như head/neuron). Trong thí nghiệm subject-verb agreement trên Pythia, paper báo cần khoảng 1 500 neuron mới giải thích được một nửa hành vi, trong khi circuit feature nhỏ hơn nhiều.</p>
+</section>
+</main>
+
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('svg');
+function mk(tag, attrs, text){
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  svg.appendChild(e); return e;
+}
+const ATT = [0.5, 1.0, 0.0, -0.5], MLPO = [0.0, 0.5, -1.0, 1.0], RES = [1.5, 1.5, 1.0, -0.5];
+const Y = [110, 165, 220, 275];
+const CX = {att:110, mlp:330, res:550};
+const F = [0, 0, 2.0, 0, 0, 0, 0.7, 0];
+
+const MODES = [
+  {key:'module', label:'Cả module', note:'nghiên cứu trước', c:'#555',
+   who:'Ví dụ: MLP trong factual recall (Meng et al., 2022).',
+   size:'4 số (Pythia: 512)', count:'2 node: attention, MLP (Pythia: 2)', read:'Không. 512 số chứa nhiều khái niệm chồng lên nhau.', hyp:'Không',
+   concl:'Kết luận dạng: "MLP layer 3 quan trọng cho việc chọn <b>are</b>". Biết chỗ, không biết MLP đó tính gì.'},
+  {key:'head', label:'Attention head', note:'nghiên cứu trước', c:'#2f6fdf',
+   who:'Ví dụ: induction heads (Olsson et al., 2022), IOI circuit (Wang et al., 2023).',
+   size:'2 số / head (Pythia: 64)', count:'2 head + MLP (Pythia: 8 head + MLP)', read:'Thường không. Một head vẫn ra nhiều số, polysemantic.', hyp:'Không',
+   concl:'Kết luận dạng: "head 3.1 quan trọng". Nhỏ hơn module, nhưng vẫn không biết 64 số của head đó mang khái niệm gì.'},
+  {key:'neuron', label:'Neuron', note:'baseline của paper', c:'#d9822b',
+   who:'Paper chạy cùng thuật toán với neuron để so sánh.',
+   size:'1 số', count:'12 node (Pythia: 3 × 512 = 1 536)', read:'Không. Neuron polysemantic (bài superposition).', hyp:'Không',
+   concl:'Kết luận dạng: "neuron #3 của residual layer 2 quan trọng", nhưng neuron đó cũng bật với HTML, bóng đá… Paper: cần khoảng 1 500 neuron mới giải thích được một nửa hành vi.'},
+  {key:'probe', label:'Hướng do người chọn', note:'probing, có giám sát', c:'#16a085',
+   who:'Người nghiên cứu đoán trước "model có biến số nhiều", gắn nhãn dữ liệu, train một probe để tìm hướng đó.',
+   size:'1 số (chiếu lên hướng đã chọn)', count:'Bằng số giả thuyết người nghiên cứu đưa ra', read:'Có, vì người nghiên cứu đặt tên trước.', hyp:'Có, và cần dữ liệu có nhãn',
+   concl:'Chỉ tìm được thứ đã đoán trước. Nếu model dùng một cơ chế người nghiên cứu không nghĩ tới thì cách này bỏ sót.'},
+  {key:'sae', label:'SAE feature + error', note:'paper này', c:'#8e44ad',
+   who:'Mỗi chỗ đọc có một SAE riêng; mỗi feature activation là một node, phần dư ε là một error node.',
+   size:'feature: 1 số; error: cả vector dư', count:'3 × 8 feature + 3 error (Pythia: 3 × 32 768 + 3). Mỗi token chỉ vài feature khác 0.', read:'Feature: phần lớn có. Error: không.', hyp:'Không, SAE học không cần nhãn',
+   concl:'Kết luận dạng: "feature <i>danh từ số nhiều</i> ở token keys → feature <i>chủ ngữ số nhiều</i> → tăng xác suất <b>are</b>". Đọc được node làm gì.'},
+];
+let mode = 'sae';
+
+function column(cx, vals, color, label){
+  vals.forEach((v, i) => {
+    mk('circle', {cx, cy:Y[i], r:19, fill:'#fff', stroke:color, 'stroke-width':2.5});
+    mk('text', {x:cx, y:Y[i]+4, 'text-anchor':'middle', class:'num'}, v.toFixed(1));
+  });
+  label.forEach((ln, k) => mk('text', {x:cx, y:44 + k*15, 'text-anchor':'middle', 'font-size': k ? 11 : 13, 'font-weight': k ? 400 : 700, fill:color}, ln));
+}
+function nodeBox(x, y, w, h){ mk('rect', {x, y, width:w, height:h, rx:10, fill:'none', stroke:'#c0392b', 'stroke-width':3}); }
+function dimRect(x, y, w, h){ mk('rect', {x, y, width:w, height:h, fill:'#fff', opacity:.72}); }
+
+function draw(){
+  svg.innerHTML = '<defs><marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#16a085"/></marker></defs>';
+  column(CX.att, ATT, '#2f6fdf', ['attention output', 'token c, layer 2']);
+  column(CX.mlp, MLPO, '#d9822b', ['MLP output', 'token c, layer 2']);
+  column(CX.res, RES, '#2e9a5b', ['residual stream', 'cuối layer 2, token c']);
+  // head brackets on attention output
+  mk('text', {x:CX.att-34, y:142, 'text-anchor':'end', 'font-size':11, fill:'#2f6fdf'}, 'head 0');
+  mk('text', {x:CX.att-34, y:252, 'text-anchor':'end', 'font-size':11, fill:'#2f6fdf'}, 'head 1');
+  mk('line', {x1:CX.att-28, y1:Y[0]-14, x2:CX.att-28, y2:Y[1]+14, stroke:'#2f6fdf', 'stroke-width':2});
+  mk('line', {x1:CX.att-28, y1:Y[2]-14, x2:CX.att-28, y2:Y[3]+14, stroke:'#2f6fdf', 'stroke-width':2});
+
+  // SAE panel for the residual stream
+  const sx = 650;
+  mk('rect', {x:sx-14, y:70, width:250, height:300, rx:12, fill:'#faf5fc', stroke:'#8e44ad', 'stroke-dasharray':'5 4'});
+  mk('text', {x:sx+111, y:92, 'text-anchor':'middle', 'font-size':13, 'font-weight':700, fill:'#8e44ad'}, 'SAE của residual stream');
+  mk('path', {d:`M${CX.res+22} 192 L${sx-16} 192`, stroke:'#8e44ad', 'stroke-width':1.6, fill:'none', 'marker-end':'url(#ar)'});
+  F.forEach((v, i) => {
+    const y = 104 + i*27;
+    mk('rect', {x:sx, y, width:84, height:22, rx:4, fill: v ? '#f0e2f6' : '#fff', stroke:'#8e44ad', 'stroke-width': v ? 2 : 1});
+    mk('text', {x:sx+8, y:y+15, 'font-size':11, fill:'#8e44ad'}, `f${i+1}`);
+    mk('text', {x:sx+76, y:y+15, 'text-anchor':'end', class:'num'}, v.toFixed(1));
+    if (i === 2) mk('text', {x:sx+92, y:y+15, 'font-size':11, fill:'#8e44ad'}, '"danh từ số nhiều"');
+    if (i === 6) mk('text', {x:sx+92, y:y+15, 'font-size':11, fill:'#8e44ad'}, '"trong cụm danh từ"');
+  });
+  mk('path', {d:`M${sx+30} 335 L${sx+50} 365 L${sx+10} 365 Z`, fill:'#fff', stroke:'#8e44ad', 'stroke-width':2});
+  mk('text', {x:sx+60, y:358, 'font-size':11, fill:'#8e44ad'}, 'ε error = [0, 0, 0, 0.5]');
+  mk('text', {x:sx+111, y:390, 'text-anchor':'middle', 'font-size':10, fill:'#888'}, 'attention và MLP output cũng có SAE riêng');
+
+  // per-mode node boxes and dimming
+  if (mode === 'module'){
+    nodeBox(CX.att-26, Y[0]-26, 52, Y[3]-Y[0]+52); nodeBox(CX.mlp-26, Y[0]-26, 52, Y[3]-Y[0]+52);
+    dimRect(CX.res-30, 30, 60, 290); dimRect(sx-16, 68, 256, 334);
+    mk('text', {x:CX.att+32, y:Y[0]-12, 'font-size':12, 'font-weight':700, fill:'#c0392b'}, '1 node');
+    mk('text', {x:CX.mlp+32, y:Y[0]-12, 'font-size':12, 'font-weight':700, fill:'#c0392b'}, '1 node');
+  }
+  if (mode === 'head'){
+    nodeBox(CX.att-24, Y[0]-24, 48, Y[1]-Y[0]+48); nodeBox(CX.att-24, Y[2]-24, 48, Y[3]-Y[2]+48);
+    nodeBox(CX.mlp-26, Y[0]-26, 52, Y[3]-Y[0]+52);
+    dimRect(CX.res-30, 30, 60, 290); dimRect(sx-16, 68, 256, 334);
+  }
+  if (mode === 'neuron'){
+    [CX.att, CX.mlp, CX.res].forEach(cx => Y.forEach(y => nodeBox(cx-23, y-23, 46, 46)));
+    dimRect(sx-16, 68, 256, 334);
+    mk('text', {x:CX.res+32, y:Y[0]-12, 'font-size':12, 'font-weight':700, fill:'#c0392b'}, 'mỗi ô = 1 node');
+  }
+  if (mode === 'probe'){
+    dimRect(CX.att-60, 30, 90, 290); dimRect(CX.mlp-30, 30, 60, 290); dimRect(sx-16, 68, 256, 334);
+    mk('path', {d:`M${CX.res+26} 300 L${CX.res+90} 120`, stroke:'#16a085', 'stroke-width':3, fill:'none', 'marker-end':'url(#ar)'});
+    nodeBox(CX.res+40, 96, 70, 30);
+    mk('text', {x:CX.res+75, y:116, 'text-anchor':'middle', 'font-size':11, 'font-weight':700, fill:'#16a085'}, '"số nhiều"?');
+    mk('text', {x:CX.res+60, y:330, 'font-size':11, fill:'#16a085'}, 'hướng do người nghiên cứu đặt trước, train bằng dữ liệu có nhãn');
+  }
+  if (mode === 'sae'){
+    dimRect(CX.att-60, 30, 90, 290); dimRect(CX.mlp-30, 30, 60, 290);
+    F.forEach((v, i) => nodeBox(sx-4, 100 + i*27, 92, 30));
+    nodeBox(sx+2, 326, 56, 46);
+    mk('text', {x:CX.res, y:320, 'text-anchor':'middle', 'font-size':11, fill:'#8e44ad'}, 'vector được tách ra bởi SAE');
+  }
+}
+
+function render(){
+  const m = document.getElementById('modes'); m.innerHTML = '';
+  MODES.forEach(md => {
+    const b = document.createElement('button');
+    b.innerHTML = `${md.label}<small>${md.note}</small>`; b.style.setProperty('--c', md.c);
+    b.classList.toggle('on', md.key === mode);
+    b.onclick = () => { mode = md.key; render(); };
+    m.appendChild(b);
+  });
+  draw();
+  const md = MODES.find(x => x.key === mode);
+  document.getElementById('info').innerHTML =
+    `<div><b class="k">Ai dùng</b>${md.who}</div>` +
+    `<div><b class="k">Một node gồm</b>${md.size}</div>` +
+    `<div><b class="k">Số node trong hình</b>${md.count}</div>` +
+    `<div><b class="k">Người đọc hiểu node không?</b>${md.read}</div>` +
+    `<div><b class="k">Cần giả thuyết trước không?</b>${md.hyp}</div>`;
+  document.getElementById('concl').innerHTML = md.concl;
+}
+render();
+</script>
+</body>
+</html>

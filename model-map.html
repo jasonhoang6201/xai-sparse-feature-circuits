@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bản đồ Pythia-70M</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7f6f2; --card:#fff; --ink:#1d1d1f; --mute:#6b6b70; --line:#dcdad3;
+  --res:#2e9a5b; --attn:#2f6fdf; --mlp:#d9822b; --w:#8a8a8a; --hi:#c0392b; --hibg:#fdecea; --sae:#8e44ad;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Be Vietnam Pro",sans-serif;line-height:1.55}
+main{max-width:1200px;margin:0 auto;padding:28px 16px 60px}
+h1{font-size:26px;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 20px}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:20px}
+h2{font-size:19px;margin:0 0 8px}
+p{margin:6px 0}
+.mono{font-family:"JetBrains Mono",monospace}
+.hint{color:var(--mute);font-size:14px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 14px}
+.chips button{font:inherit;font-size:13px;padding:5px 11px;border-radius:16px;border:1.5px solid var(--line);background:#fff;cursor:pointer}
+.chips button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:20px;align-items:start}
+.panel{position:sticky;top:12px;border:1px solid var(--line);border-radius:10px;padding:16px;background:#fcfcfa;min-height:200px}
+.panel h3{margin:0 0 6px;font-size:17px}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:4px 10px;font-size:14px;margin:8px 0}
+.kv span:nth-child(odd){color:var(--mute)}
+.badge{display:inline-block;font-size:12px;padding:1px 8px;border-radius:10px;font-weight:600}
+.badge.w{background:#ececec;color:#555}
+.badge.a{background:#e6f4ec;color:var(--res)}
+.badge.op{background:#eef2fb;color:var(--attn)}
+svg{display:block;width:100%;height:auto}
+svg text{font-family:"Be Vietnam Pro",sans-serif}
+.el{cursor:pointer}
+.el:hover > rect,.el:hover > circle{stroke-width:3}
+.el.dim{opacity:.22}
+.el.lit > rect,.el.lit > circle{stroke:var(--hi)!important;stroke-width:3.5}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;margin-top:8px;color:var(--mute)}
+.legend i{display:inline-block;width:22px;height:14px;vertical-align:-2px;margin-right:6px;border-radius:3px}
+.modes{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.modes button{font:inherit;font-size:14px;padding:6px 12px;border-radius:18px;border:2px solid var(--ink);background:#fff;cursor:pointer}
+.modes button.on{background:var(--ink);color:#fff}
+.cells{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}
+.head{border:1px dashed #b8c6ea;border-radius:6px;padding:4px}
+.head .lbl{font-size:11px;color:var(--attn);text-align:center}
+.head .row{display:flex;gap:2px}
+.c{width:16px;height:22px;border:1px solid #c9c9c9;border-radius:3px;background:#fff;transition:.2s}
+.c.on{background:var(--hi);border-color:var(--hi)}
+.nodeinfo{border-left:4px solid var(--hi);background:var(--hibg);padding:10px 14px;border-radius:0 8px 8px 0}
+.foot{font-size:13px;color:var(--mute);border-top:1px solid var(--line);padding-top:10px;margin-top:14px}
+@media (max-width:860px){.grid{grid-template-columns:1fr}.panel{position:static}}
+</style>
+</head>
+<body>
+<main>
+<h1>Pythia-70M: các thành phần và tên gọi</h1>
+<p class="sub">Vẽ cho <b>một token</b> ("keys"), đi từ trên xuống dưới. Bấm vào một tên gọi để tô đỏ vị trí của nó trên hình, hoặc bấm thẳng vào một khối trên hình để xem giải thích.</p>
+
+<section>
+  <h2>1. Toàn bộ model cho một token</h2>
+  <div class="chips" id="chips"></div>
+  <div class="grid">
+    <div>
+      <svg id="map" viewBox="0 0 720 960"></svg>
+      <div class="legend">
+        <span><i style="background:#ececec;border:1.5px solid #8a8a8a"></i>weight: số cố định, chỉ đổi lúc train</span>
+        <span><i style="background:#e6f4ec;border:1.5px solid #2e9a5b;border-radius:10px"></i>activation (vector): đổi theo từng token, mỗi con số là 1 neuron</span>
+        <span><i style="background:#fff;border:1.5px solid #8e44ad;border-radius:10px"></i>chữ "SAE": chỗ paper đặt SAE</span>
+      </div>
+    </div>
+    <div class="panel" id="panel"></div>
+  </div>
+  <p class="foot">Chi tiết phụ, có thể bỏ qua: (1) trước Attention và MLP còn một bước LayerNorm (chuẩn hóa vector), hình không vẽ. (2) Pythia thật ra tính Attention và MLP <b>song song</b> từ cùng một x, rồi cộng cả hai vào residual stream: x_out = x + Attn(x) + MLP(x). Hình vẽ theo thứ tự Attention rồi MLP như đã học; 3 chỗ paper đọc (attention output, MLP output, residual stream cuối layer) không đổi.</p>
+</section>
+
+<section>
+  <h2>2. "Node" có thể lớn cỡ nào</h2>
+  <p>Dưới đây là <b>attention output của layer 3</b> tại token "keys": 512 con số, chia thành 8 head, mỗi head 64 số. Hình vẽ thu gọn: mỗi head vẽ 8 ô thay cho 64 ô. Chọn kiểu node để xem node đó chiếm phần nào.</p>
+  <div class="modes" id="modes"></div>
+  <div class="cells" id="cells"></div>
+  <div class="nodeinfo" id="nodeinfo"></div>
+</section>
+
+<section>
+  <h2>3. Circuit nối các node qua nhiều token và nhiều layer</h2>
+  <p>Mỗi cột là một token, mỗi hàng là một layer. Hình 1 chỉ là <b>một cột</b> của hình này. Circuit dưới đây là ví dụ minh họa cho câu "The keys to the cabinet ___", <b>không phải</b> circuit thật paper tìm được.</p>
+  <svg id="circ" viewBox="0 0 760 470"></svg>
+  <p class="hint">Edge thẳng đứng: thông tin đi tiếp trong residual stream của cùng một token. Edge chéo: attention chép thông tin từ token trước sang token sau. Các node mờ không nằm trong circuit, vì bỏ chúng đi thì model vẫn chọn "are".</p>
+</section>
+</main>
+
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const map = document.getElementById('map');
+function mk(svg, tag, attrs, text){
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  svg.appendChild(e); return e;
+}
+
+// kind: w = weight, a = activation, op = component that computes (contains weights)
+const EL = {
+  token:  {kind:'a', title:'Token "keys"', size:'1 token (một ID trong từ điển ≈ 50 000 token)',
+           text:'Đầu vào của model. Model chưa có vector nào, chỉ có số thứ tự của token trong từ điển.'},
+  WE:     {kind:'w', title:'Embedding matrix W_E', size:'≈ 50 000 hàng × 512 số',
+           text:'Weight. Mỗi token có một hàng 512 số. Model lấy hàng của token "keys" ra làm vector đầu tiên x₀. Không có phép nhân nào, chỉ tra bảng.'},
+  x0:     {kind:'a', title:'x₀ = embedding của token', size:'512 số = 512 neuron', node:true,
+           text:'Activation đầu tiên trong residual stream. Paper có đặt một SAE ở đây (embedding SAE).'},
+  stream: {kind:'a', title:'Residual stream', size:'512 số tại mỗi điểm',
+           text:'Đường thẳng xanh chạy dọc model. Tại mỗi điểm trên đường này là một vector 512 số của token "keys". Mỗi block đọc vector này, tính ra một vector mới rồi cộng vào.'},
+  layerbox:{kind:'op', title:'Layer (block)', size:'6 layer, đánh số 0 → 5',
+           text:'Một layer gồm 1 attention layer và 1 MLP. Layer 1 → 5 có cấu trúc giống hệt layer 0, nhưng mỗi layer có bộ weight riêng.'},
+  attn:   {kind:'op', title:'Attention layer', size:'8 head + W_O',
+           text:'Bước duy nhất đọc được token khác (các token đứng trước). Gồm 8 head chạy song song, output của 8 head được ghép lại rồi nhân với W_O.'},
+  head:   {kind:'op', title:'Attention head', size:'mỗi head ra 64 số; 8 head × 64 = 512',
+           text:'Mỗi head có W_Q, W_K, W_V riêng (là weight), nên tự tính bộ attention weight riêng: head này có thể nhìn chủ ngữ, head khác nhìn từ ngay trước. Nghiên cứu cũ hay dùng cả một head làm node. "Head 9.6" nghĩa là layer 9, head số 6 (của GPT-2).'},
+  WO:     {kind:'w', title:'W_O', size:'512 × 512',
+           text:'Weight. Nhận 8 × 64 = 512 số ghép từ các head, nhân ra attention output 512 số.'},
+  attnout:{kind:'a', title:'Attention output', size:'512 số = 512 neuron', node:true,
+           text:'Activation. Chỗ đọc thứ 1 của paper trong mỗi layer (có SAE). Được cộng vào residual stream ở dấu ⊕ phía dưới.'},
+  plus1:  {kind:'op', title:'⊕ Residual connection (sau attention)', size:'không có weight',
+           text:'Chỉ là phép cộng từng tọa độ: x + attention output. Không có weight nào ở đây.'},
+  mlp:    {kind:'op', title:'MLP', size:'W₁, GELU, W₂',
+           text:'Chỉ đọc vector của chính token này. Gồm: nhân W₁ (512 → 2048), GELU, nhân W₂ (2048 → 512).'},
+  W1:     {kind:'w', title:'W₁', size:'2048 hàng × 512 số',
+           text:'Weight. Mỗi hidden neuron có một hàng 512 weight; hidden neuron k = hàng k · x.'},
+  hidden: {kind:'a', title:'Hidden neuron của MLP (sau GELU)', size:'2048 số = 2048 neuron',
+           text:'Activation. Đây là "neuron" theo nghĩa thông thường. Paper KHÔNG đặt SAE và không lấy node ở đây.'},
+  W2:     {kind:'w', title:'W₂', size:'512 hàng × 2048 số',
+           text:'Weight. Mỗi neuron của MLP output có một hàng 2048 weight.'},
+  mlpout: {kind:'a', title:'MLP output', size:'512 số = 512 neuron', node:true,
+           text:'Activation. Chỗ đọc thứ 2 của paper trong mỗi layer (có SAE).'},
+  plus2:  {kind:'op', title:'⊕ Residual connection (sau MLP)', size:'không có weight',
+           text:'Phép cộng: (x + attention output) + MLP output.'},
+  resout: {kind:'a', title:'Residual stream cuối layer 0', size:'512 số = 512 neuron', node:true,
+           text:'Activation. Chỗ đọc thứ 3 của paper trong mỗi layer (có SAE). Vector này đi tiếp vào layer 1.'},
+  rest:   {kind:'op', title:'Layer 1 → 5', size:'mỗi layer: attention + MLP',
+           text:'Lặp lại đúng cấu trúc của layer 0, mỗi layer có weight riêng. Mỗi layer cũng có 3 chỗ đặt SAE. Tổng: 6 × 3 + 1 (embedding) = 19 SAE.'},
+  WU:     {kind:'w', title:'Unembedding W_U', size:'512 × ≈ 50 000',
+           text:'Weight. Nhân residual stream cuối cùng ra một điểm số cho mỗi token trong từ điển. Paper gọi đây là "final decoder".'},
+  probs:  {kind:'a', title:'Xác suất token tiếp theo', size:'≈ 50 000 số',
+           text:'Softmax của các điểm số. Hành vi mà circuit giải thích nằm ở đây, ví dụ xác suất "are" lớn hơn "is". Các số trên hình là minh họa.'},
+};
+
+const TERMS = [
+  ['token', ['token']], ['weight', ['WE','W1','W2','WO','WU']],
+  ['activation / neuron', ['x0','attnout','hidden','mlpout','resout','probs']],
+  ['embedding', ['WE','x0']], ['residual stream', ['stream','x0','resout']],
+  ['residual connection', ['plus1','plus2']], ['layer', ['layerbox','rest']],
+  ['attention layer', ['attn']], ['attention head', ['head']], ['attention output', ['attnout']],
+  ['MLP', ['mlp']], ['hidden neuron (nghĩa thường)', ['hidden']], ['MLP output', ['mlpout']],
+  ['chỗ đặt SAE', ['x0','attnout','mlpout','resout']], ['unembedding', ['WU','probs']],
+];
+
+const groups = {};
+function group(id){ const g = mk(map, 'g', {class:'el', 'data-id':id}); g.addEventListener('click', ev => { ev.stopPropagation(); show(id); light([id]); }); groups[id] = groups[id] || []; groups[id].push(g); return g; }
+function box(id, x, y, w, h, lines, style){
+  const g = group(id);
+  const st = {w:{fill:'#ececec', stroke:'#8a8a8a', rx:4}, a:{fill:'#e6f4ec', stroke:'#2e9a5b', rx:h/2},
+              attn:{fill:'#f5f8ff', stroke:'#2f6fdf', rx:10}, mlp:{fill:'#fdf6ee', stroke:'#d9822b', rx:10},
+              layer:{fill:'none', stroke:'#bbb', rx:12}, head:{fill:'#fff', stroke:'#2f6fdf', rx:4}, op:{fill:'#fff', stroke:'#555', rx:8}}[style];
+  const r = document.createElementNS(NS, 'rect');
+  Object.entries({x, y, width:w, height:h, rx:st.rx, fill:st.fill, stroke:st.stroke, 'stroke-width':1.6, 'stroke-dasharray': style === 'layer' ? '6 4' : ''}).forEach(([k, v]) => r.setAttribute(k, v));
+  g.appendChild(r);
+  lines.forEach((ln, i) => {
+    const t = document.createElementNS(NS, 'text');
+    const ty = style === 'attn' || style === 'mlp' || style === 'layer' ? y + 18 + i*15 : y + h/2 + 4 + (i - (lines.length-1)/2)*15;
+    Object.entries({x: style === 'layer' ? x + 12 : x + w/2, y: ty, 'text-anchor': style === 'layer' ? 'start' : 'middle', 'font-size': i === 0 ? 13 : 11, 'font-weight': i === 0 ? 700 : 400,
+      fill: {w:'#444', a:'#1f6e40', attn:'#2f6fdf', mlp:'#b4651a', layer:'#888', head:'#2f6fdf', op:'#333'}[style]}).forEach(([k, v]) => t.setAttribute(k, v));
+    t.textContent = ln; g.appendChild(t);
+  });
+  return g;
+}
+function sae(x, y){ mk(map, 'rect', {x, y, width:38, height:18, rx:9, fill:'#fff', stroke:'#8e44ad', 'stroke-width':1.5}); mk(map, 'text', {x:x+19, y:y+13, 'text-anchor':'middle', 'font-size':11, 'font-weight':700, fill:'#8e44ad'}, 'SAE'); }
+function arrow(d){ mk(map, 'path', {d, fill:'none', stroke:'#999', 'stroke-width':1.6, 'marker-end':'url(#ar)'}); }
+
+function drawMap(){
+  map.innerHTML = '<defs><marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#999"/></marker></defs>';
+  const SX = 130; // x of the residual stream
+
+  box('layerbox', 20, 205, 680, 445, ['Layer 0'], 'layer');
+
+  // residual stream line
+  const sg = group('stream');
+  const sl = document.createElementNS(NS, 'rect');
+  Object.entries({x:SX-5, y:130, width:10, height:700, rx:5, fill:'#2e9a5b', stroke:'#2e9a5b'}).forEach(([k, v]) => sl.setAttribute(k, v));
+  sg.appendChild(sl);
+  const st = document.createElementNS(NS, 'text');
+  Object.entries({x:SX-14, y:470, 'text-anchor':'middle', 'font-size':12, 'font-weight':700, fill:'#2e9a5b', transform:`rotate(-90 ${SX-14} 470)`}).forEach(([k, v]) => st.setAttribute(k, v));
+  st.textContent = 'residual stream (512 số tại mỗi điểm)'; sg.appendChild(st);
+
+  box('token', SX-70, 10, 140, 34, ['token "keys"'], 'op');
+  arrow(`M${SX} 44 L${SX} 64`);
+  box('WE', SX-90, 66, 180, 44, ['Embedding W_E', '≈50 000 × 512'], 'w');
+  arrow(`M${SX} 110 L${SX} 140`);
+  box('x0', SX+14, 146, 150, 28, ['x₀ (512 số)'], 'a'); sae(SX+170, 151);
+
+  // attention block
+  box('attn', 230, 222, 455, 190, ['Attention layer 0'], 'attn');
+  arrow(`M${SX+5} 260 L${248} 260`);
+  for (let h = 0; h < 8; h++){
+    box('head', 250 + h*53, 248, 46, 50, [`head ${h}`, '64 số'], 'head');
+  }
+  mk(map, 'text', {x:457, y:318, 'text-anchor':'middle', 'font-size':11, fill:'#2f6fdf'}, 'mỗi head có W_Q, W_K, W_V riêng, đọc được các token trước');
+  arrow('M457 324 L457 336');
+  box('WO', 400, 338, 114, 26, ['W_O  512 × 512'], 'w');
+  arrow('M457 364 L457 374');
+  box('attnout', 380, 376, 170, 28, ['attention output (512 số)'], 'a'); sae(556, 381);
+  arrow(`M380 390 L${SX+22} 430`);
+  box('plus1', SX-14, 420, 28, 28, ['⊕'], 'op');
+
+  // MLP block
+  box('mlp', 230, 452, 455, 150, ['MLP 0'], 'mlp');
+  arrow(`M${SX+5} 482 L${248} 482`);
+  box('W1', 250, 470, 120, 34, ['W₁', '2048 × 512'], 'w');
+  arrow('M370 487 L384 487');
+  box('hidden', 386, 470, 160, 34, ['hidden: 2048 neuron', 'sau GELU'], 'a');
+  arrow('M546 487 L560 487');
+  box('W2', 562, 470, 110, 34, ['W₂', '512 × 2048'], 'w');
+  arrow('M617 504 L560 552');
+  box('mlpout', 380, 552, 170, 28, ['MLP output (512 số)'], 'a'); sae(556, 557);
+  arrow(`M380 566 L${SX+22} 600`);
+  box('plus2', SX-14, 588, 28, 28, ['⊕'], 'op');
+
+  box('resout', SX+14, 622, 220, 28, ['residual stream cuối layer 0 (512 số)'], 'a'); sae(SX+240, 627);
+
+  box('rest', 20, 670, 680, 60, ['Layer 1 → Layer 5', 'mỗi layer giống hệt layer 0, có weight riêng, có 3 chỗ đặt SAE'], 'layer');
+
+  arrow(`M${SX} 830 L${SX} 846`);
+  box('WU', SX-90, 848, 180, 40, ['Unembedding W_U', '512 × ≈50 000'], 'w');
+  arrow(`M${SX} 888 L${SX} 904`);
+  box('probs', SX-90, 906, 360, 34, ['xác suất token tiếp theo: are 0.71, is 0.18, …'], 'a');
+}
+
+const panel = document.getElementById('panel');
+function show(id){
+  const e = EL[id];
+  const kind = {w:'<span class="badge w">weight</span>', a:'<span class="badge a">activation</span>', op:'<span class="badge op">thành phần / phép tính</span>'}[e.kind];
+  panel.innerHTML = `<h3>${e.title}</h3>${kind}` +
+    `<div class="kv"><span>Kích thước</span><span class="mono">${e.size}</span>` +
+    `<span>Làm node?</span><span>${e.node ? 'Có. Paper đặt SAE ở đây, mỗi feature của SAE là một node; baseline thì mỗi neuron ở đây là một node.' :
+      (id === 'head' || id === 'attn' || id === 'mlp' ? 'Nghiên cứu trước dùng cả khối này làm một node. Paper thì không.' : 'Không.')}</span></div>` +
+    `<p>${e.text}</p>`;
+}
+function light(ids){
+  Object.entries(groups).forEach(([id, gs]) => gs.forEach(g => {
+    g.classList.toggle('lit', ids.includes(id));
+    g.classList.toggle('dim', ids.length > 0 && !ids.includes(id) && id !== 'layerbox' && id !== 'attn' && id !== 'mlp' && id !== 'stream');
+  }));
+}
+map.addEventListener('click', () => { light([]); });
+
+const chips = document.getElementById('chips');
+TERMS.forEach(([name, ids]) => {
+  const b = document.createElement('button'); b.textContent = name;
+  b.onclick = () => {
+    const was = b.classList.contains('on');
+    [...chips.children].forEach(c => c.classList.remove('on'));
+    if (was){ light([]); return; }
+    b.classList.add('on'); light(ids); show(ids[0]);
+  };
+  chips.appendChild(b);
+});
+drawMap(); show('x0');
+
+// Section 2: node sizes
+const MODES = [
+  {key:'all', label:'Cả attention output (hoặc cả MLP)', count:'512 số', text:'Cách của một số nghiên cứu cũ: cả khối là một node. Biết khối này quan trọng nhưng không biết nó tính gì, vì 512 số chứa nhiều khái niệm chồng lên nhau.'},
+  {key:'head', label:'Một head (head 6)', count:'64 số', text:'Cách của các circuit như IOI: một head là một node. Nhỏ hơn cả khối nhưng vẫn là 64 số, vẫn polysemantic. "Head 9.6 quan trọng" là kiểu kết luận này.'},
+  {key:'neuron', label:'Một neuron (#203)', count:'1 số', text:'Baseline của paper: mỗi tọa độ là một node. Chỉ 1 số, nhưng neuron polysemantic nên vẫn khó hiểu.'},
+  {key:'feature', label:'Một feature (paper dùng)', count:'1 số, tính từ cả 512 số', text:'Feature là một hướng trải trên cả 512 neuron (độ đậm của ô = weight của hướng trên neuron đó). Giá trị feature = w₁·x₁ + w₂·x₂ + … + w₅₁₂·x₅₁₂, ra 1 số, giống bảng B ở bài superposition. Nếu SAE học tốt, mỗi feature ứng với một khái niệm.'},
+];
+let mode = 'head';
+const shade = i => { const s = Math.sin(i*12.9898)*43758.5453; return s - Math.floor(s); };
+function renderCells(){
+  const m = document.getElementById('modes'); m.innerHTML = '';
+  MODES.forEach(md => { const b = document.createElement('button'); b.textContent = md.label; b.classList.toggle('on', md.key === mode); b.onclick = () => { mode = md.key; renderCells(); }; m.appendChild(b); });
+  const c = document.getElementById('cells'); c.innerHTML = '';
+  for (let h = 0; h < 8; h++){
+    const hd = document.createElement('div'); hd.className = 'head';
+    hd.innerHTML = `<div class="lbl">head ${h} (64 số)</div>`;
+    const row = document.createElement('div'); row.className = 'row';
+    for (let j = 0; j < 8; j++){
+      const i = h*8 + j, cell = document.createElement('div'); cell.className = 'c';
+      if (mode === 'all' || (mode === 'head' && h === 6) || (mode === 'neuron' && h === 3 && j === 2)) cell.classList.add('on');
+      if (mode === 'feature'){ cell.style.background = `rgba(192,57,43,${(0.08 + 0.85*shade(i+1)).toFixed(2)})`; cell.style.borderColor = '#c0392b'; }
+      row.appendChild(cell);
+    }
+    hd.appendChild(row); c.appendChild(hd);
+  }
+  const md = MODES.find(x => x.key === mode);
+  document.getElementById('nodeinfo').innerHTML = `<b>${md.label}</b>: node gồm <b>${md.count}</b>.<br>${md.text}`;
+}
+renderCells();
+
+// Section 3: circuit grid
+const circ = document.getElementById('circ');
+const TOK = ['The','keys','to','the','cabinet'];
+const cx = t => 140 + t*130, cy = l => 60 + l*62;
+function drawCirc(){
+  circ.innerHTML = '<defs><marker id="ar2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#c0392b"/></marker></defs>';
+  TOK.forEach((t, i) => {
+    mk(circ, 'text', {x:cx(i), y:28, 'text-anchor':'middle', 'font-size':14, 'font-weight':700}, `"${t}"`);
+    mk(circ, 'line', {x1:cx(i), y1:40, x2:cx(i), y2:cy(5)+16, stroke:'#2e9a5b', 'stroke-width':4, opacity:.25});
+  });
+  for (let l = 0; l < 6; l++){
+    mk(circ, 'text', {x:20, y:cy(l)+4, 'font-size':12, fill:'#6b6b70'}, `layer ${l}`);
+    TOK.forEach((t, i) => mk(circ, 'circle', {cx:cx(i), cy:cy(l), r:5, fill:'#ddd'}));
+  }
+  const nodes = [
+    {t:1, l:0, name:'"danh từ số nhiều"'},
+    {t:1, l:2, name:'"chủ ngữ số nhiều"'},
+    {t:4, l:3, name:'"chủ ngữ của câu là số nhiều"'},
+    {t:4, l:5, name:'"cần động từ số nhiều"'},
+  ];
+  const edges = [[0,1],[1,2],[2,3]];
+  edges.forEach(([a, b]) => {
+    const A = nodes[a], B = nodes[b];
+    mk(circ, 'line', {x1:cx(A.t), y1:cy(A.l)+12, x2:cx(B.t), y2:cy(B.l)-14, stroke:'#c0392b', 'stroke-width':2.5, 'marker-end':'url(#ar2)'});
+  });
+  mk(circ, 'text', {x:(cx(1)+cx(4))/2 + 10, y:(cy(2)+cy(3))/2 - 4, 'font-size':11, fill:'#c0392b'}, 'attention chép sang token cuối');
+  nodes.forEach(n => {
+    mk(circ, 'circle', {cx:cx(n.t), cy:cy(n.l), r:11, fill:'#fdecea', stroke:'#c0392b', 'stroke-width':2.5});
+    mk(circ, 'text', {x:cx(n.t) + (n.t === 4 ? -16 : 16), y:cy(n.l)+4, 'text-anchor': n.t === 4 ? 'end' : 'start', 'font-size':11, 'font-weight':600, fill:'#c0392b'}, n.name);
+  });
+  // a node that is not in the circuit
+  mk(circ, 'circle', {cx:cx(4), cy:cy(1), r:9, fill:'#f3f3f3', stroke:'#aaa', 'stroke-dasharray':'3 2'});
+  mk(circ, 'text', {x:cx(4)-14, y:cy(1)+4, 'text-anchor':'end', 'font-size':11, fill:'#999'}, '"danh từ số ít" (không thuộc circuit)');
+  mk(circ, 'line', {x1:cx(4), y1:cy(5)+14, x2:cx(4), y2:cy(5)+44, stroke:'#c0392b', 'stroke-width':2.5, 'marker-end':'url(#ar2)'});
+  mk(circ, 'text', {x:cx(4), y:cy(5)+62, 'text-anchor':'middle', 'font-size':14, 'font-weight':700, fill:'#c0392b'}, 'are');
+}
+drawCirc();
+</script>
+</body>
+</html>
