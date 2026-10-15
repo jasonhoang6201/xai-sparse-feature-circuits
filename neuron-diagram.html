@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Neuron trong paper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7f6f2; --card:#fff; --ink:#1d1d1f; --mute:#6b6b70; --line:#dcdad3;
+  --emb:#555; --attn:#2f6fdf; --mlp:#d9822b; --res:#2e9a5b; --mid:#999; --hi:#c0392b; --hibg:#fdecea;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Be Vietnam Pro",sans-serif;line-height:1.55}
+main{max-width:1180px;margin:0 auto;padding:28px 16px 60px}
+h1{font-size:26px;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 20px}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:20px}
+h2{font-size:18px;margin:0 0 8px}
+p{margin:6px 0}
+.mono{font-family:"JetBrains Mono",monospace}
+.hint{color:var(--mute);font-size:14px}
+.scroll{overflow-x:auto}
+svg{display:block;min-width:900px;width:100%}
+svg text{font-family:"Be Vietnam Pro",sans-serif}
+svg .num{font-family:"JetBrains Mono",monospace;font-size:13px;font-weight:600}
+.neuron{cursor:pointer}
+.neuron:hover circle{stroke-width:4}
+.readout{border-left:4px solid var(--hi);background:var(--hibg);padding:12px 16px;border-radius:0 8px 8px 0;font-size:15px;min-height:60px}
+.readout b{color:var(--hi)}
+.sum{font-family:"JetBrains Mono",monospace;margin-top:6px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border-bottom:1px solid var(--line);padding:8px;text-align:left}
+td.n,th.n{text-align:right;font-family:"JetBrains Mono",monospace}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;margin-top:10px}
+.legend span::before{content:"";display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px;border:3px solid var(--c)}
+</style>
+</head>
+<body>
+<main>
+<h1>Neuron = một số trong vector activation</h1>
+<p class="sub">Model đồ chơi: <b>4 chiều</b> thay cho 512, MLP có <b>6 hidden unit</b> thay cho 2048, chỉ vẽ <b>1 layer</b> và <b>1 token</b>. Mọi con số là số minh họa.</p>
+
+<section>
+  <h2>Một layer, vẽ từng con số</h2>
+  <p>Mỗi hình tròn là <b>một số</b> trong vector. Một cột tròn là một vector. Theo footnote 1 của paper, <b>mỗi hình tròn là một neuron</b>. Bấm vào một hình tròn bất kỳ.</p>
+  <div class="scroll"><svg id="dia" viewBox="0 0 1140 470"></svg></div>
+  <div class="legend">
+    <span style="--c:var(--emb)">vector vào layer (x)</span>
+    <span style="--c:var(--attn)">attention output: paper đọc ở đây</span>
+    <span style="--c:var(--mid)">x + Attn: paper không đọc</span>
+    <span style="--c:var(--mlp)">MLP output: paper đọc ở đây</span>
+    <span style="--c:var(--res)">residual stream cuối layer: paper đọc ở đây</span>
+  </div>
+</section>
+
+<section>
+  <h2>Hình tròn bạn vừa bấm</h2>
+  <div class="readout" id="readout"></div>
+</section>
+
+<section>
+  <h2>Đếm neuron ở 3 chỗ paper đọc</h2>
+  <table>
+    <tr><th></th><th class="n">Model đồ chơi</th><th class="n">Pythia-70M</th></tr>
+    <tr><td>Số neuron ở attention output (1 layer, 1 token)</td><td class="n">4</td><td class="n">512</td></tr>
+    <tr><td>Số neuron ở MLP output</td><td class="n">4</td><td class="n">512</td></tr>
+    <tr><td>Số neuron ở residual stream cuối layer</td><td class="n">4</td><td class="n">512</td></tr>
+    <tr><td>Tổng cho 1 layer, 1 token</td><td class="n">12</td><td class="n">1 536</td></tr>
+  </table>
+  <p class="hint">Hidden unit trong MLP (6 trong hình, 2048 ở Pythia) là "neuron" theo nghĩa thông thường, nhưng paper không lấy chúng làm node, vì paper chỉ xét 3 chỗ ở trên.</p>
+</section>
+</main>
+
+<script>
+const V = {
+  x:    {name:'vector vào layer x', short:'x (vào layer)', color:'var(--emb)', vals:[1.0, 0.0, 2.0, -1.0], read:false},
+  a:    {name:'attention output', short:'attention output', color:'var(--attn)', vals:[0.5, 1.0, 0.0, -0.5], read:true},
+  mid:  {name:'x + Attn (vector giữa layer)', short:'x + Attn', color:'var(--mid)', vals:[1.5, 1.0, 2.0, -1.5], read:false},
+  pre:  {name:'hidden unit trước GELU', short:'trước GELU', color:'var(--mlp)', vals:[2.0, -1.0, 0.5, -2.0, 1.0, 0.0], read:false, hidden:true},
+  post: {name:'hidden unit sau GELU', short:'sau GELU', color:'var(--mlp)', vals:[1.95, -0.16, 0.35, -0.05, 0.84, 0.0], read:false, hidden:true},
+  m:    {name:'MLP output', short:'MLP output', color:'var(--mlp)', vals:[0.0, 0.5, -1.0, 1.0], read:true},
+  out:  {name:'residual stream cuối layer', short:'residual stream', color:'var(--res)', vals:[1.5, 1.5, 1.0, -0.5], read:true},
+};
+const COLX = {x:60, a:230, mid:400, pre:560, post:720, m:880, out:1060};
+let sel = {key:'out', i:1};
+
+const svg = document.getElementById('dia');
+const NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs, text){
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  svg.appendChild(e); return e;
+}
+function ys(n){
+  const gap = n === 4 ? 70 : 50, top = 250 - gap*(n-1)/2;
+  return Array.from({length:n}, (_, i) => top + i*gap);
+}
+function arrow(x1, y1, x2, y2, label){
+  el('line', {x1, y1, x2, y2, stroke:'#aaa', 'stroke-width':1.5, 'marker-end':'url(#ar)'});
+  if (label) el('text', {x:(x1+x2)/2, y:y1-8, 'text-anchor':'middle', 'font-size':12, fill:'#6b6b70'}, label);
+}
+
+function draw(){
+  svg.innerHTML = '<defs><marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#aaa"/></marker></defs>';
+
+  // MLP box around the hidden layer
+  el('rect', {x:470, y:60, width:500, height:395, rx:14, fill:'#fdf6ee', stroke:'#d9822b', 'stroke-dasharray':'6 4'});
+  el('text', {x:720, y:440, 'text-anchor':'middle', 'font-size':14, 'font-weight':700, fill:'#d9822b'}, 'Bên trong MLP');
+
+  // block labels and arrows between columns
+  el('rect', {x:115, y:228, width:70, height:44, rx:8, fill:'#fff', stroke:'#2f6fdf', 'stroke-width':2});
+  el('text', {x:150, y:255, 'text-anchor':'middle', 'font-size':13, 'font-weight':700, fill:'#2f6fdf'}, 'Attn');
+  arrow(85, 250, 113, 250); arrow(187, 250, 203, 250);
+  el('text', {x:315, y:150, 'text-anchor':'middle', 'font-size':26, fill:'#6b6b70'}, '+');
+  el('text', {x:315, y:175, 'text-anchor':'middle', 'font-size':11, fill:'#6b6b70'}, 'x + attention');
+  arrow(255, 250, 373, 250);
+  arrow(425, 250, 533, 250, 'nhân W₁');
+  arrow(585, 250, 693, 250, 'GELU');
+  arrow(745, 250, 853, 250, 'nhân W₂');
+  arrow(905, 250, 1033, 250);
+  el('text', {x:970, y:150, 'text-anchor':'middle', 'font-size':26, fill:'#6b6b70'}, '+');
+  el('text', {x:970, y:175, 'text-anchor':'middle', 'font-size':11, fill:'#6b6b70'}, '(x + attn) + MLP');
+
+  // residual path drawn on top: x and attention reach the end without passing through MLP
+  el('path', {d:'M400 30 L1060 30 L1060 45', fill:'none', stroke:'#2e9a5b', 'stroke-width':1.5, 'stroke-dasharray':'4 3', 'marker-end':'url(#ar)'});
+  el('text', {x:730, y:24, 'text-anchor':'middle', 'font-size':11, fill:'#2e9a5b'}, 'residual connection: x + Attn đi thẳng tới cuối, rồi cộng với MLP output');
+
+  for (const key in V){
+    const v = V[key], cx = COLX[key], yy = ys(v.vals.length), r = v.hidden ? 17 : 22;
+    el('text', {x:cx, y:yy[0]-r-26, 'text-anchor':'middle', 'font-size':12, 'font-weight':700, fill:v.color}, v.short);
+    if (v.read) el('text', {x:cx, y:yy[0]-r-10, 'text-anchor':'middle', 'font-size':11, fill:'#c0392b'}, 'paper đọc');
+    v.vals.forEach((val, i) => {
+      const isSel = sel.key === key && sel.i === i;
+      const sameRow = !v.hidden && !V[sel.key].hidden && sel.i === i && ['x','a','mid','m','out'].includes(sel.key);
+      const g = document.createElementNS(NS, 'g'); g.setAttribute('class', 'neuron'); svg.appendChild(g);
+      const c = document.createElementNS(NS, 'circle');
+      Object.entries({cx, cy:yy[i], r, fill: isSel ? '#fdecea' : (sameRow ? '#fff7e0' : '#fff'), stroke: isSel ? '#c0392b' : v.color, 'stroke-width': isSel ? 4 : 2.5}).forEach(([k, x]) => c.setAttribute(k, x));
+      g.appendChild(c);
+      const t = document.createElementNS(NS, 'text');
+      Object.entries({x:cx, y:yy[i]+4, 'text-anchor':'middle', class:'num', fill:'#1d1d1f'}).forEach(([k, x]) => t.setAttribute(k, x));
+      t.textContent = val.toFixed(v.hidden ? 2 : 1); g.appendChild(t);
+      const idx = document.createElementNS(NS, 'text');
+      Object.entries({x:cx - r - 6, y:yy[i]+4, 'text-anchor':'end', 'font-size':10, fill:'#6b6b70'}).forEach(([k, x]) => idx.setAttribute(k, x));
+      idx.textContent = '#' + (i+1); g.appendChild(idx);
+      g.addEventListener('click', () => { sel = {key, i}; draw(); readout(); });
+    });
+  }
+}
+
+function f(n){ return (n >= 0 ? '' : '−') + Math.abs(n).toFixed(1); }
+
+function readout(){
+  const v = V[sel.key], i = sel.i, n = i + 1;
+  let html = `Đây là <b>neuron #${n}</b> của <b>${v.name}</b>, giá trị <b>${v.vals[i].toFixed(v.hidden ? 2 : 1)}</b>. ` +
+             `Tức là: lấy vector ${v.name}, đọc tọa độ thứ ${n}.`;
+  if (v.read) html += `<br>Đây là một trong 3 chỗ paper đọc, nên neuron này có thể là một node trong neuron circuit của paper (cùng với layer và token).`;
+  else if (v.hidden) html += `<br>Đây là "neuron" theo nghĩa thông thường (số nằm trong MLP, ${sel.key === 'post' ? 'đã qua GELU' : 'trước GELU'}). Paper không lấy số ở đây làm node.`;
+  else if (sel.key === 'mid') html += `<br>Theo định nghĩa thì vẫn là neuron, nhưng paper không đọc vector giữa layer này.`;
+  else html += `<br>Đây là vector vào layer, tức residual stream cuối layer trước.`;
+
+  const X = V.x.vals, A = V.a.vals, M = V.m.vals;
+  if (sel.key === 'mid') html += `<div class="sum">x#${n} + attn#${n} = ${f(X[i])} + ${f(A[i])} = ${f(V.mid.vals[i])}</div>`;
+  if (sel.key === 'out') html += `<div class="sum">x#${n} + attn#${n} + mlp#${n} = ${f(X[i])} + ${f(A[i])} + ${f(M[i])} = ${f(V.out.vals[i])}</div>` +
+    `<span class="hint">Phép cộng làm riêng từng tọa độ: neuron #${n} cuối layer chỉ cộng các neuron #${n} ở các vector trước (các ô tô vàng).</span>`;
+  document.getElementById('readout').innerHTML = html;
+}
+
+draw(); readout();
+</script>
+</body>
+</html>

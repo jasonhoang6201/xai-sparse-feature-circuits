@@ -55,9 +55,35 @@ The user studies the paper keyword by keyword using `keywords-slides.html`, read
 - Node = one unit (feature in the paper, neuron in the baseline) at a specific layer/spot and token position. Not necessarily a neuron.
 - Feature was introduced briefly (a weighted combination of neurons = a direction, learned by an SAE attached outside the model). The user found it hard; it is deferred to group 2. For now the user only needs: neuron is a real component, feature is a way of reading neuron values.
 
+### 7. Slide 6: Neuron (paper's definition)
+- Footnote 1: "neuron" = a basis-aligned direction in latent space, not necessarily preceded by a nonlinearity. So a neuron is **one coordinate (one number)** of an activation vector.
+- Usual meaning: a hidden unit inside the MLP, output after GELU. Paper's meaning is broader: any coordinate of any vector. Same granularity (one number), not something smaller inside an MLP neuron.
+- The neuron baseline uses nodes at the 3 SAE spots (attention output, MLP output, residual stream), 512 neurons each in Pythia. MLP hidden units (2048) are not used as nodes.
+- Taught with `neuron-diagram.html` (toy model: 4 dims, 6 hidden units, 1 layer, 1 token).
+- The user twice restated it as "a layer" (first "smaller units inside an MLP neuron", then "input layer, output layer, MLP layer with activation"). Corrected: a neuron is one number, not a layer. Re-check this if the user says "neuron" for a whole vector later.
+
+### 8. Slide 7: Polysemantic
+- One neuron fires strongly on several unrelated kinds of input (HTML, Korean names, football), so reading that one neuron does not tell which concept is present.
+- Geometry (taught with `polysemantic-diagram.html`, 2-D toy): the whole vector is a point; each neuron is one axis, its value is the coordinate. 2 concepts on the 2 axes → monosemantic. 3 concepts at 120° → HTML [1.7, 1.0] and Korean name [−1.7, 1.0] both give neuron #2 = 1.0 → polysemantic. The full vector still distinguishes them.
+- Corrections given when the user restated it:
+  - "512 vectors" → one vector with 512 numbers = 512 axes.
+  - "look at neurons > 0" → negative values count too (−1.7); meaning is the direction of the whole vector, not the set of positive neurons.
+  - Neurons do not "generate" directions; the model learns to place each concept along a direction. "More concept directions than axes" is superposition (the cause); polysemantic is what we observe on one neuron (the consequence).
+
+### 9. Superposition (confirmed)
+- Superposition requires more concepts than neurons; 2 concepts on 2 axes is separated but not superposition.
+- Neuron vs weight, confirmed in the user's words: neuron = each coordinate of a layer's vector (activation, changes per input); weight = w in w·x (fixed after training, updated only during training). Inputs x_i…x_y are the neurons entering f(x). Added: weights exist in embedding and attention (W_Q, W_K, W_V, W_O) too, not only in MLP.
+- Taught with step 4 of `polysemantic-diagram.html`: slider for N concepts in 2-D, toggle concepts, calculation tables A (build vector = sum of 2·(cos θ, sin θ)) and B (read = x₁·cos θ + x₂·sin θ, then cut negatives).
+- Points covered: more directions than axes; sparse = rare co-occurrence makes the rare misreads acceptable (3 concepts all on → [0,0]); close directions (N=10, 36°) misread even with one concept; 90° apart → sum still reads back exactly.
+- Corrected: interference is geometry, not a learned belief that concepts "go together".
+- User asked how directions get there. Answered: cos/sin is only the toy's notation for a 2-D direction; the model stores directions as weight numbers (embedding rows, rows of later weight matrices); reading = dot product done by a later layer's weight row; all directions start random and move together at every gradient step; nobody picks the number of concepts or which neuron, training does; this is why interpretability is needed (paper explains how a specific behavior is produced, not "why the model is good").
+
 ## Next concept (resume here)
 - The user is still in group "1 Bối cảnh". Do NOT jump ahead to group 2.
-- Next: **slide 6: Neuron**, then slide 7 Polysemantic, and so on in deck order.
+- Slide 8 Circuit was introduced (earlier circuits used heads / whole MLP as units, too coarse and polysemantic; paper uses SAE features). The user chose to move on without full confirmation.
+- Still unclear for the user: neuron (activation) vs weight, and which steps have weights (linear layers: one weight row per output neuron) vs none (residual addition). The user wants a spiral approach: go through the whole deck, then loop back. Revisit this on the second pass, e.g. when SAE's W_enc / W_dec come up.
+- Group 2 started. Next: **Dictionary learning** (introduced; waiting for confirmation), then SAE.
+- Paper only cites Elhage et al. 2022 for polysemanticity/superposition; it does not explain superposition itself.
 - SAE (group 2) comes after group 1 is finished.
 
 ## Key numbers from the paper (verified)

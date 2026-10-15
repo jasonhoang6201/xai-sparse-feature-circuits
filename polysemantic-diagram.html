@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Neuron và polysemantic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7f6f2; --card:#fff; --ink:#1d1d1f; --mute:#6b6b70; --line:#dcdad3;
+  --n1:#2f6fdf; --n2:#d9822b; --hi:#c0392b; --hibg:#fdecea;
+  --html:#8e44ad; --korea:#16a085; --ball:#c0392b; --plain:#888;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Be Vietnam Pro",sans-serif;line-height:1.55}
+main{max-width:1060px;margin:0 auto;padding:28px 16px 60px}
+h1{font-size:26px;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 20px}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:20px}
+h2{font-size:19px;margin:0 0 8px}
+p{margin:6px 0}
+.mono{font-family:"JetBrains Mono",monospace}
+.hint{color:var(--mute);font-size:14px}
+.row{display:grid;grid-template-columns:minmax(0,420px) 1fr;gap:24px;align-items:start}
+svg{display:block;width:100%;height:auto}
+svg text{font-family:"Be Vietnam Pro",sans-serif}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.btns button{font:inherit;font-size:14px;padding:6px 12px;border-radius:20px;border:2px solid var(--c);background:#fff;color:var(--c);cursor:pointer}
+.btns button.on{background:var(--c);color:#fff}
+.bars{margin-top:8px}
+.bar{display:grid;grid-template-columns:90px 1fr 50px;align-items:center;gap:8px;margin:6px 0;font-size:14px}
+.track{position:relative;height:22px;background:#f0efea;border-radius:4px}
+.track .zero{position:absolute;left:50%;top:0;bottom:0;width:1px;background:#999}
+.track .fill{position:absolute;top:0;bottom:0;border-radius:4px;transition:all .3s}
+.val{font-family:"JetBrains Mono",monospace;text-align:right}
+table{border-collapse:collapse;width:100%;font-size:14px;margin-top:10px}
+th,td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left}
+td.n,th.n{text-align:right;font-family:"JetBrains Mono",monospace}
+td.big{font-weight:700;color:var(--hi)}
+.verdict{border-left:4px solid var(--c);background:#fafafa;padding:10px 14px;border-radius:0 8px 8px 0;margin-top:12px}
+.verdict.mono-ok{--c:#2e9a5b} .verdict.poly{--c:var(--hi);background:var(--hibg)}
+@media (max-width:760px){.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<h1>Neuron là trục, vector là điểm, và vì sao neuron bị polysemantic</h1>
+<p class="sub">Model đồ chơi chỉ có <b>2 chiều</b>, tức là 2 neuron. Pythia có 512 chiều, nhưng cách hoạt động giống hệt. Mọi con số là số minh họa.</p>
+
+<section>
+  <h2>Bước 1. Vector là một điểm, mỗi neuron là một trục</h2>
+  <div class="row">
+    <svg id="p0" viewBox="0 0 400 400"></svg>
+    <div>
+      <p><b>Kéo chấm đen</b> trên hình.</p>
+      <p>Chấm đen là <b>cả vector</b> <span class="mono" id="p0vec"></span>, tức một điểm.</p>
+      <div class="bars" id="p0bars"></div>
+      <p><span style="color:var(--n1);font-weight:700">Neuron #1</span> là trục ngang. Giá trị của nó là tọa độ ngang của chấm.</p>
+      <p><span style="color:var(--n2);font-weight:700">Neuron #2</span> là trục dọc. Giá trị của nó là tọa độ dọc của chấm.</p>
+      <p class="hint">Hai neuron cùng xác định một điểm. Một neuron riêng lẻ chỉ cho biết điểm nằm ở đâu theo một trục.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Bước 2. Hai khái niệm trong 2 chiều: neuron monosemantic</h2>
+  <p>Model chỉ cần biểu diễn 2 khái niệm, nên nó gán mỗi khái niệm cho <b>một trục</b>: "HTML" theo trục ngang, "bóng đá" theo trục dọc.</p>
+  <div class="row">
+    <svg id="p1" viewBox="0 0 400 400"></svg>
+    <div>
+      <p>Chọn input để xem vector của token:</p>
+      <div class="btns" id="b1"></div>
+      <div class="bars" id="bars1"></div>
+      <table id="t1"></table>
+      <div class="verdict mono-ok">Mỗi neuron chỉ bật với <b>đúng một</b> khái niệm. Thấy neuron #1 lớn thì biết chắc input là HTML. Neuron như vậy là <b>monosemantic</b>.</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Bước 3. Ba khái niệm trong 2 chiều: neuron polysemantic</h2>
+  <p>Giờ model phải biểu diễn 3 khái niệm ("HTML", "tên Hàn", "bóng đá") mà chỉ có 2 trục. Không thể gán mỗi khái niệm một trục riêng, nên model đặt chúng theo 3 <b>hướng nằm chéo</b>, cách nhau 120°.</p>
+  <div class="row">
+    <svg id="p2" viewBox="0 0 400 400"></svg>
+    <div>
+      <p>Chọn input:</p>
+      <div class="btns" id="b2"></div>
+      <div class="bars" id="bars2"></div>
+      <table id="t2"></table>
+      <div class="verdict poly">Neuron #2 bằng <b>1.0</b> với cả HTML lẫn tên Hàn. Nếu chỉ nhìn neuron #2 = 1.0 thì không biết input là HTML hay tên Hàn. Neuron #2 là <b>polysemantic</b>.<br>
+      Nguyên nhân: hướng của HTML và hướng của tên Hàn đều <b>chéo</b>, nên cả hai đều có một phần nằm theo trục dọc. Chiếu mỗi hướng xuống trục dọc đều ra 1.0 (đường nét đứt trên hình).</div>
+      <p class="hint">Còn cả vector (cả 2 neuron cùng lúc) thì vẫn phân biệt được: HTML ở <span class="mono">[1.7, 1.0]</span>, tên Hàn ở <span class="mono">[−1.7, 1.0]</span>. Thông tin không bị mất, nó chỉ không nằm gọn trong một neuron. Cách đọc theo hướng thay vì theo trục là việc SAE ở nhóm 2 sẽ làm.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Bước 4. Từ 2 trục vẽ được vô số hướng, vậy tại sao không nhét thật nhiều khái niệm?</h2>
+  <p>Kéo thanh trượt để đổi số khái niệm. Bấm vào tên khái niệm để bật/tắt nó trong input. Mỗi khái niệm có mặt đóng góp một mũi tên độ dài 2 theo hướng của nó, vector của token là <b>tổng</b> các mũi tên đó (mũi tên đen).</p>
+  <p>Model đọc từng khái niệm bằng cách <b>chiếu</b> vector đen lên hướng của khái niệm đó (giống bước 1, nhưng chiếu lên hướng chéo thay vì lên trục). Kết quả âm bị activation function cắt về 0.</p>
+  <div class="row">
+    <svg id="p3" viewBox="-50 0 500 400"></svg>
+    <div>
+      <label style="font-weight:600">Số khái niệm: <span id="nval" class="mono"></span>
+        <input type="range" id="nslider" min="2" max="12" value="3" style="width:100%">
+      </label>
+      <p class="mono" id="angleInfo" style="font-size:14px"></p>
+      <div class="btns" id="b3"></div>
+      <div id="bars3"></div>
+      <div class="verdict" id="v3"></div>
+    </div>
+  </div>
+  <h3 style="margin:18px 0 4px;font-size:16px">Bảng tính A. Vector của token được tạo ra thế nào</h3>
+  <p class="hint">Mỗi khái niệm có mặt đóng góp một mũi tên dài 2 theo hướng của nó. Một hướng ở góc θ có tọa độ (cos θ, sin θ), nên mũi tên = 2 × (cos θ, sin θ). Vector của token = cộng các mũi tên, cộng riêng từng tọa độ.</p>
+  <div class="scroll"><table id="tA" style="min-width:560px"></table></div>
+  <h3 style="margin:18px 0 4px;font-size:16px">Bảng tính B. Model đọc từng khái niệm ra thế nào</h3>
+  <p class="hint">Chiếu vector lên hướng của khái niệm: nhân neuron #1 với cos θ, nhân neuron #2 với sin θ, rồi cộng hai tích lại. Kết quả âm bị cắt về 0.</p>
+  <div class="scroll"><table id="tB" style="min-width:560px"></table></div>
+  <p class="hint">Thử theo thứ tự:
+    (1) 3 khái niệm, chỉ bật HTML: đọc đúng.
+    (2) Kéo lên 10, chỉ bật HTML: hai khái niệm bên cạnh bị đọc ra khoảng 1.6, model tưởng chúng có mặt.
+    (3) Về 3 khái niệm, bật cả 3: vector đen bằng [0, 0], model đọc ra 0 cho cả 3, giống hệt input không có khái niệm nào. Đây là tổ hợp hiếm mà superposition chấp nhận đọc sai.</p>
+  <p class="hint">Ở Pythia có 512 trục thay vì 2, nên xếp được rất nhiều hướng mà cặp nào cũng gần vuông góc (độ trùng gần 0). Hình 2 chiều không vẽ được điều đó; nó chỉ cho thấy vì sao hướng nằm sát nhau thì đọc sai.</p>
+</section>
+</main>
+
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const C = {html:'#8e44ad', korea:'#16a085', ball:'#c0392b', plain:'#888', n1:'#2f6fdf', n2:'#d9822b'};
+const S = 70, O = 200; // pixels per unit, origin pixel
+const px = x => O + x*S, py = y => O - y*S;
+
+function mk(svg, tag, attrs, text){
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  svg.appendChild(e); return e;
+}
+function axes(svg){
+  svg.innerHTML = '<defs>' + ['n1','n2','html','korea','ball','plain','k'].map(k =>
+    `<marker id="m-${svg.id}-${k}" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="${C[k]||'#1d1d1f'}"/></marker>`).join('') + '</defs>';
+  for (let i = -2; i <= 2; i++){
+    mk(svg, 'line', {x1:px(i), y1:20, x2:px(i), y2:380, stroke:'#eee'});
+    mk(svg, 'line', {x1:20, y1:py(i), x2:380, y2:py(i), stroke:'#eee'});
+    if (i) { mk(svg, 'text', {x:px(i), y:O+16, 'text-anchor':'middle', 'font-size':11, fill:'#999'}, i);
+             mk(svg, 'text', {x:O-8, y:py(i)+4, 'text-anchor':'end', 'font-size':11, fill:'#999'}, i); }
+  }
+  mk(svg, 'line', {x1:20, y1:O, x2:385, y2:O, stroke:C.n1, 'stroke-width':2.5, 'marker-end':`url(#m-${svg.id}-n1)`});
+  mk(svg, 'line', {x1:O, y1:380, x2:O, y2:15, stroke:C.n2, 'stroke-width':2.5, 'marker-end':`url(#m-${svg.id}-n2)`});
+  mk(svg, 'text', {x:384, y:O-10, 'text-anchor':'end', 'font-size':13, 'font-weight':700, fill:C.n1}, 'neuron #1');
+  mk(svg, 'text', {x:O+8, y:24, 'font-size':13, 'font-weight':700, fill:C.n2}, 'neuron #2');
+}
+function bars(id, v){
+  const b = document.getElementById(id); b.innerHTML = '';
+  [['neuron #1', v[0], C.n1], ['neuron #2', v[1], C.n2]].forEach(([name, val, col]) => {
+    const w = Math.min(Math.abs(val), 2.5) / 2.5 * 50;
+    const left = val >= 0 ? 50 : 50 - w;
+    b.insertAdjacentHTML('beforeend',
+      `<div class="bar"><span style="color:${col};font-weight:700">${name}</span>` +
+      `<div class="track"><div class="zero"></div><div class="fill" style="left:${left}%;width:${w}%;background:${col}"></div></div>` +
+      `<span class="val">${val.toFixed(1)}</span></div>`);
+  });
+}
+
+// Step 1: draggable point
+const p0 = document.getElementById('p0');
+let pt = [1.5, 1.0];
+function drawP0(){
+  axes(p0);
+  mk(p0, 'line', {x1:px(pt[0]), y1:py(pt[1]), x2:px(pt[0]), y2:O, stroke:C.n1, 'stroke-dasharray':'4 3', 'stroke-width':2});
+  mk(p0, 'line', {x1:px(pt[0]), y1:py(pt[1]), x2:O, y2:py(pt[1]), stroke:C.n2, 'stroke-dasharray':'4 3', 'stroke-width':2});
+  mk(p0, 'circle', {cx:px(pt[0]), cy:O, r:5, fill:C.n1});
+  mk(p0, 'circle', {cx:O, cy:py(pt[1]), r:5, fill:C.n2});
+  mk(p0, 'text', {x:px(pt[0]), y:O + (pt[1] >= 0 ? 32 : -12), 'text-anchor':'middle', 'font-size':12, 'font-weight':700, fill:C.n1}, pt[0].toFixed(1));
+  mk(p0, 'text', {x:O + (pt[0] >= 0 ? -10 : 10), y:py(pt[1]) - 6, 'text-anchor':pt[0] >= 0 ? 'end' : 'start', 'font-size':12, 'font-weight':700, fill:C.n2}, pt[1].toFixed(1));
+  const dot = mk(p0, 'circle', {cx:px(pt[0]), cy:py(pt[1]), r:11, fill:'#1d1d1f', style:'cursor:grab'});
+  mk(p0, 'text', {x:px(pt[0]) + 14, y:py(pt[1]) - 12, 'font-size':12, 'font-weight':700}, `x = [${pt[0].toFixed(1)}, ${pt[1].toFixed(1)}]`);
+  document.getElementById('p0vec').textContent = `x = [${pt[0].toFixed(1)}, ${pt[1].toFixed(1)}]`;
+  bars('p0bars', pt);
+}
+let dragging = false;
+function toUnits(e){
+  const r = p0.getBoundingClientRect();
+  const sx = (e.clientX - r.left) / r.width * 400, sy = (e.clientY - r.top) / r.height * 400;
+  const clamp = v => Math.max(-2.5, Math.min(2.5, Math.round(v*10)/10));
+  return [clamp((sx - O)/S), clamp((O - sy)/S)];
+}
+p0.addEventListener('pointerdown', e => { dragging = true; p0.setPointerCapture(e.pointerId); pt = toUnits(e); drawP0(); });
+p0.addEventListener('pointermove', e => { if (dragging){ pt = toUnits(e); drawP0(); } });
+p0.addEventListener('pointerup', () => { dragging = false; });
+p0.style.touchAction = 'none';
+drawP0();
+
+// Steps 2 and 3: concept directions and inputs
+function setup(svgId, btnId, barsId, tableId, concepts, inputs){
+  const svg = document.getElementById(svgId);
+  let cur = inputs[0].key;
+  const btns = document.getElementById(btnId);
+  inputs.forEach(inp => {
+    const b = document.createElement('button');
+    b.textContent = inp.label; b.style.setProperty('--c', C[inp.key]);
+    b.onclick = () => { cur = inp.key; render(); };
+    btns.appendChild(b);
+  });
+  const tbl = document.getElementById(tableId);
+  function render(){
+    [...btns.children].forEach((b, i) => b.classList.toggle('on', inputs[i].key === cur));
+    axes(svg);
+    concepts.forEach(c => {
+      const sel = c.key === cur;
+      mk(svg, 'line', {x1:O, y1:O, x2:px(c.v[0]), y2:py(c.v[1]), stroke:C[c.key], 'stroke-width': sel ? 4 : 2, opacity: sel ? 1 : .35, 'marker-end':`url(#m-${svgId}-${c.key})`});
+      const lx = px(c.v[0]*1.12), ly = py(c.v[1]*1.12);
+      mk(svg, 'text', {x:lx, y:ly + 4, 'text-anchor': c.v[0] > .2 ? 'start' : (c.v[0] < -.2 ? 'end' : 'middle'), 'font-size':13, 'font-weight':700, fill:C[c.key], opacity: sel ? 1 : .5}, c.name);
+      if (sel){
+        mk(svg, 'line', {x1:px(c.v[0]), y1:py(c.v[1]), x2:px(c.v[0]), y2:O, stroke:C.n1, 'stroke-dasharray':'4 3', 'stroke-width':2});
+        mk(svg, 'line', {x1:px(c.v[0]), y1:py(c.v[1]), x2:O, y2:py(c.v[1]), stroke:C.n2, 'stroke-dasharray':'4 3', 'stroke-width':2});
+        mk(svg, 'circle', {cx:px(c.v[0]), cy:py(c.v[1]), r:7, fill:'#1d1d1f'});
+      }
+    });
+    const inp = inputs.find(i => i.key === cur);
+    if (inp.key === 'plain') mk(svg, 'circle', {cx:O, cy:O, r:7, fill:'#1d1d1f'});
+    bars(barsId, inp.v);
+    tbl.innerHTML = '<tr><th>Input</th><th class="n">neuron #1</th><th class="n">neuron #2</th></tr>' +
+      inputs.map(i => `<tr style="${i.key === cur ? 'background:#fafafa' : ''}"><td style="color:${C[i.key]};font-weight:600">${i.label.replace(/</g, '&lt;')}</td>` +
+        i.v.map(x => `<td class="n ${Math.abs(x) >= 0.95 ? 'big' : ''}">${x.toFixed(1)}</td>`).join('') + '</tr>').join('');
+  }
+  render();
+}
+
+setup('p1', 'b1', 'bars1', 't1',
+  [{key:'html', name:'HTML', v:[2, 0]}, {key:'ball', name:'bóng đá', v:[0, 2]}],
+  [{key:'html', label:'<div class="header">', v:[2, 0]},
+   {key:'ball', label:'Messi sút bóng', v:[0, 2]},
+   {key:'plain', label:'Tôi ăn cơm', v:[0, 0]}]);
+
+setup('p2', 'b2', 'bars2', 't2',
+  [{key:'html', name:'HTML', v:[1.7, 1.0]}, {key:'korea', name:'tên Hàn', v:[-1.7, 1.0]}, {key:'ball', name:'bóng đá', v:[0, -2]}],
+  [{key:'html', label:'<div class="header">', v:[1.7, 1.0]},
+   {key:'korea', label:'Kim Min-jun', v:[-1.7, 1.0]},
+   {key:'ball', label:'Messi sút bóng', v:[0, -2]},
+   {key:'plain', label:'Tôi ăn cơm', v:[0, 0]}]);
+
+// Step 4: N concepts evenly spaced in 2-D, toggle which are present, read each by projection
+const NAMES = ['HTML','tên Hàn','bóng đá','toán','nấu ăn','âm nhạc','y học','luật','thời tiết','Python','thơ','chứng khoán'];
+const STRENGTH = 2;
+let N = 3, present = new Set([0]);
+const p3 = document.getElementById('p3');
+const col = k => `hsl(${(k*360/12 + 280) % 360} 60% 42%)`;
+// start at 30 deg so that N = 3 reproduces step 3 exactly
+const dir = k => { const a = (30 + k*360/N) * Math.PI/180; return [Math.cos(a), Math.sin(a)]; };
+
+function render3(){
+  document.getElementById('nval').textContent = N;
+  const ang = 360/N, ov = Math.cos(ang*Math.PI/180);
+  document.getElementById('angleInfo').textContent =
+    `Góc giữa 2 hướng cạnh nhau: ${ang.toFixed(1)}°   độ trùng = cos(${ang.toFixed(1)}°) = ${ov.toFixed(2)}`;
+
+  const b = document.getElementById('b3'); b.innerHTML = '';
+  for (let k = 0; k < N; k++){
+    const btn = document.createElement('button');
+    btn.textContent = NAMES[k]; btn.style.setProperty('--c', col(k));
+    btn.classList.toggle('on', present.has(k));
+    btn.onclick = () => { present.has(k) ? present.delete(k) : present.add(k); render3(); };
+    b.appendChild(btn);
+  }
+
+  const v = [0, 0];
+  present.forEach(k => { const d = dir(k); v[0] += STRENGTH*d[0]; v[1] += STRENGTH*d[1]; });
+
+  axes(p3);
+  p3.insertAdjacentHTML('afterbegin', '<defs><marker id="m-p3-black" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#1d1d1f"/></marker></defs>');
+  for (let k = 0; k < N; k++){
+    const d = dir(k), on = present.has(k);
+    mk(p3, 'line', {x1:O, y1:O, x2:px(STRENGTH*d[0]), y2:py(STRENGTH*d[1]), stroke:col(k), 'stroke-width': on ? 4 : 1.5, opacity: on ? 1 : .45});
+    mk(p3, 'circle', {cx:px(STRENGTH*d[0]), cy:py(STRENGTH*d[1]), r: on ? 5 : 3, fill:col(k)});
+    mk(p3, 'text', {x:px(2.35*d[0]), y:py(2.35*d[1]) + 4, 'text-anchor': d[0] > .3 ? 'start' : (d[0] < -.3 ? 'end' : 'middle'), 'font-size': N > 8 ? 10 : 12, 'font-weight':700, fill:col(k), opacity: on ? 1 : .6}, NAMES[k]);
+  }
+  const cl = t => Math.max(-2.6, Math.min(2.6, t));
+  if (Math.hypot(v[0], v[1]) > 0.05)
+    mk(p3, 'line', {x1:O, y1:O, x2:px(cl(v[0])), y2:py(cl(v[1])), stroke:'#1d1d1f', 'stroke-width':3, 'marker-end':'url(#m-p3-black)'});
+  mk(p3, 'circle', {cx:px(cl(v[0])), cy:py(cl(v[1])), r:6, fill:'#1d1d1f'});
+  mk(p3, 'text', {x:px(cl(v[0])) + 10, y:py(cl(v[1])) + 18, 'font-size':12, 'font-weight':700}, `[${v[0].toFixed(1)}, ${v[1].toFixed(1)}]`);
+
+  const bars = document.getElementById('bars3');
+  bars.innerHTML = '<div class="bar" style="font-size:12px;color:#6b6b70"><span>khái niệm</span><span>model đọc ra (vạch đen = giá trị đúng)</span><span></span></div>';
+  let wrong = 0;
+  for (let k = 0; k < N; k++){
+    const d = dir(k), read = Math.max(0, v[0]*d[0] + v[1]*d[1]), truth = present.has(k) ? STRENGTH : 0;
+    const bad = Math.abs(read - truth) > 0.3; if (bad) wrong++;
+    const w = Math.min(read, 4) / 4 * 100, tw = truth / 4 * 100;
+    bars.insertAdjacentHTML('beforeend',
+      `<div class="bar"><span style="color:${col(k)};font-weight:700;font-size:13px">${NAMES[k]}</span>` +
+      `<div class="track"><div class="fill" style="left:0;width:${w}%;background:${bad ? '#c0392b' : col(k)}"></div>` +
+      `<div style="position:absolute;top:-3px;bottom:-3px;left:${tw}%;width:2px;background:#1d1d1f"></div></div>` +
+      `<span class="val" style="color:${bad ? '#c0392b' : 'inherit'}">${read.toFixed(1)}</span></div>`);
+  }
+  const f1 = x => (Math.abs(x) < 0.005 ? 0 : x).toFixed(2);
+  const angleOf = k => ((30 + k*360/N) % 360);
+  const nameCell = k => `<td style="color:${col(k)};font-weight:700">${NAMES[k]}</td>`;
+  let rowsA = '';
+  [...present].sort((a, b) => a - b).forEach(k => {
+    const d = dir(k);
+    rowsA += `<tr>${nameCell(k)}<td class="n">${angleOf(k).toFixed(0)}°</td>` +
+      `<td class="n">(${f1(d[0])}, ${f1(d[1])})</td>` +
+      `<td class="n">2 × (${f1(d[0])}, ${f1(d[1])}) = (${f1(2*d[0])}, ${f1(2*d[1])})</td></tr>`;
+  });
+  document.getElementById('tA').innerHTML =
+    '<tr><th>Khái niệm có mặt</th><th class="n">Góc θ</th><th class="n">Hướng (cos θ, sin θ)</th><th class="n">Mũi tên = 2 × hướng</th></tr>' +
+    (rowsA || '<tr><td colspan="4">Không có khái niệm nào được bật, vector = (0, 0).</td></tr>') +
+    `<tr style="background:#fafafa"><td colspan="3"><b>Tổng = vector của token</b> (neuron #1, neuron #2)</td><td class="n"><b>(${f1(v[0])}, ${f1(v[1])})</b></td></tr>`;
+
+  let rowsB = '';
+  for (let k = 0; k < N; k++){
+    const d = dir(k), dot = v[0]*d[0] + v[1]*d[1], read = Math.max(0, dot), truth = present.has(k) ? STRENGTH : 0;
+    const bad = Math.abs(read - truth) > 0.3;
+    rowsB += `<tr>${nameCell(k)}<td class="n">${angleOf(k).toFixed(0)}°</td>` +
+      `<td class="n">${f1(v[0])} × ${f1(d[0])} + ${f1(v[1])} × ${f1(d[1])} = ${f1(dot)}</td>` +
+      `<td class="n ${bad ? 'big' : ''}">${f1(read)}</td><td class="n">${truth}</td></tr>`;
+  }
+  document.getElementById('tB').innerHTML =
+    '<tr><th>Khái niệm</th><th class="n">Góc θ</th><th class="n">neuron #1 × cos θ + neuron #2 × sin θ</th><th class="n">Cắt âm về 0 = model đọc ra</th><th class="n">Đúng ra</th></tr>' + rowsB;
+
+  const vd = document.getElementById('v3');
+  vd.className = 'verdict ' + (wrong ? 'poly' : 'mono-ok');
+  vd.innerHTML = wrong
+    ? `Model đọc sai <b>${wrong}/${N}</b> khái niệm (thanh đỏ: giá trị đọc ra lệch xa vạch đen). ` +
+      (present.size === 1 ? 'Chỉ có 1 khái niệm mà vẫn sai, vì các hướng nằm quá sát nhau.' : 'Nhiều khái niệm có mặt cùng lúc nên các mũi tên cộng lại làm lệch kết quả đọc.')
+    : `Model đọc đúng cả ${N} khái niệm.`;
+}
+document.getElementById('nslider').addEventListener('input', e => {
+  N = +e.target.value;
+  present = new Set([...present].filter(k => k < N));
+  render3();
+});
+render3();
+</script>
+</body>
+</html>
