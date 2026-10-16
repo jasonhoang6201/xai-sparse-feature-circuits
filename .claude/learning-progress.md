@@ -78,7 +78,17 @@ The user studies the paper keyword by keyword using `keywords-slides.html`, read
 - Corrected: interference is geometry, not a learned belief that concepts "go together".
 - User asked how directions get there. Answered: cos/sin is only the toy's notation for a 2-D direction; the model stores directions as weight numbers (embedding rows, rows of later weight matrices); reading = dot product done by a later layer's weight row; all directions start random and move together at every gradient step; nobody picks the number of concepts or which neuron, training does; this is why interpretability is needed (paper explains how a specific behavior is produced, not "why the model is good").
 
+### 10. Dictionary learning (confirmed)
+- Taught with `dictionary-learning.html` (7-step stepper, 2-D, concepts HTML / nấu ăn / bóng đá; "tên Hàn" was replaced because the user found it unclear).
+- x = activation vector of one token at one read spot (not only embedding). Each read spot has its own dictionary (Pythia: 19).
+- Dictionary = set of directions v; x ≈ Σ coefficient·v with fewest nonzero coefficients. Feature = the direction vᵢ (fixed); feature activation = its coefficient for this x. A token's x is a sum of a few features (+ error ε); a feature is not built from other features.
+- Two phases: learn dictionary once on random unlabeled text (Pythia: The Pile, first 128 tokens of random docs, ~2B tokens), name features afterwards by looking at top-activating inputs; then use it per input. The model itself never computes these coefficients; researchers do.
+- Why fewest: with more directions than dims there are infinitely many decompositions (v_nấuăn + v_bóngđá = −v_HTML, so 2·v_HTML = 102·v_HTML + 100·v_nấuăn + 100·v_bóngđá); sparsity picks the one matching real data (few concepts per token).
+- Side topics answered: Pythia = plain next-token LM suite by EleutherAI on The Pile (paper gives no explicit reason for choosing it; inferred: small, open weights, own SAEs; Gemma-2-2B used with open Gemma Scope SAEs). Why later layers carry more processed info: each token has its own vector, attention reads only earlier tokens, multi-step info (subject number → carried to verb position) needs several layers; paper's RC circuit shows this.
+- Correction-style feedback recorded in `.claude/memory/correct-directly-no-praise.md`; "đồ chơi" banned in `.claude/rules/term-language.md`.
+
 ## Next concept (resume here)
+- **Now: slide 10 SAE** (introduced right after Dictionary learning was confirmed).
 - The user is still in group "1 Bối cảnh". Do NOT jump ahead to group 2.
 - Slide 8 Circuit was introduced (earlier circuits used heads / whole MLP as units, too coarse and polysemantic; paper uses SAE features). The user said "tiếp tục" without full confirmation.
 - OPEN, the user will revisit later ("cuốn chiếu sau"): "each output neuron of a W·x layer has its own row of weights; the residual addition x + f(x) has no weights". Shown with a 2-D example (W rows [0.87,0.5], [−0.5,0.87]; f(x)=[2,0]; residual [3.73,1.0]) and Pythia shapes W₁ 2048×512, W₂ 512×2048. The user said it was still not fully clear.
@@ -91,7 +101,7 @@ The user studies the paper keyword by keyword using `keywords-slides.html`, read
 - Probing (supervised) confirmed: a small probe w·x is trained on frozen activations with human labels, answering yes/no "is concept A present"; w is the direction. Corrected: the activation is 512 numbers of one token at one spot, not 512 tokens; probing was used by earlier work, not by this paper for nodes.
 - Paper's nodes = SAE features + SAE error nodes; the user knows "feature" will be explained in group 2.
 - Probing limits confirmed (user raised the first one): a residual-stream probe cannot say which earlier block wrote the info; a probe shows info is present, not that the model uses it. Paper's answers: SAEs at every sublayer, causal effect via intervention, edges across layers.
-- Slide 8 Circuit done. Now in **group 2: slide 9 Dictionary learning** (introduced, waiting for confirmation). An early Dictionary learning explanation was given by mistake; the user said "tôi mới tới circuit thôi". Finish Circuit first, then re-introduce Dictionary learning from scratch.
+- Slide 8 Circuit done. Now in **group 2: slide 9 Dictionary learning** (introduced, waiting for confirmation). The user said they did not understand what it is or what problem it solves; made `dictionary-learning.html` (7-step stepper, 2-D toy with 3 concepts). Clarified that x is the activation of one token at one read spot (embedding, attn out, MLP out, resid), not only the embedding. An early Dictionary learning explanation was given by mistake; the user said "tôi mới tới circuit thôi". Finish Circuit first, then re-introduce Dictionary learning from scratch.
 - Paper only cites Elhage et al. 2022 for polysemanticity/superposition; it does not explain superposition itself.
 - SAE (group 2) comes after group 1 is finished.
 

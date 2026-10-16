@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dictionary learning từng bước</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f7f6f2;--card:#fff;--ink:#1d1d1f;--mute:#6b6b70;--line:#dcdad3;--hi:#c0392b;--hibg:#fdecea}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Be Vietnam Pro",sans-serif;line-height:1.55}
+main{max-width:1100px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:24px;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 16px}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px}
+.scroll{overflow-x:auto}
+svg{display:block;min-width:900px;width:100%;height:auto}
+svg text{font-family:"Be Vietnam Pro",sans-serif}
+svg .num{font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:600}
+.nav{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.nav button,#ctrl button{font:inherit;font-size:15px;padding:7px 16px;border-radius:8px;border:2px solid var(--ink);background:#fff;cursor:pointer}
+.nav button:disabled{opacity:.3;cursor:default}
+#ctrl{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+#ctrl button.on{background:var(--hi);border-color:var(--hi);color:#fff}
+.dots{display:flex;gap:6px}
+.dots span{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer}
+.dots span.on{background:var(--hi);border-color:var(--hi);color:#fff}
+.explain{border-left:4px solid var(--hi);background:var(--hibg);padding:12px 16px;border-radius:0 8px 8px 0;font-size:16px;min-height:130px}
+.explain h3{margin:0 0 6px;font-size:17px}
+.explain p{margin:4px 0}
+.mono{font-family:"JetBrains Mono",monospace;font-size:14px}
+.pt{cursor:pointer}
+</style>
+</head>
+<body>
+<main>
+<h1>Dictionary learning, từng bước</h1>
+<p class="sub">Ví dụ đã giảm chiều cho dễ vẽ: vector <code>x</code> có <b>2 số</b> (Pythia: 512), có <b>3 khái niệm</b> (Pythia: hàng chục nghìn). Dùng ← → để chuyển bước. Các con số là minh họa.</p>
+
+<section>
+  <div class="nav">
+    <button id="prev">← Trước</button>
+    <div class="dots" id="dots"></div>
+    <button id="next">Tiếp →</button>
+  </div>
+  <div class="explain" id="explain"></div>
+  <div id="ctrl"></div>
+  <div class="scroll" style="margin-top:12px"><svg id="svg" viewBox="0 0 1000 520"></svg></div>
+</section>
+</main>
+
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('svg');
+function mk(tag, attrs, text){
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined && text !== null) e.textContent = text;
+  svg.appendChild(e); return e;
+}
+
+const V = [
+  {n:'HTML',    c:'#2e86de', a:30},
+  {n:'nấu ăn', c:'#e67e22', a:150},
+  {n:'bóng đá', c:'#27ae60', a:270}
+];
+V.forEach(v => v.d = [Math.cos(v.a*Math.PI/180), Math.sin(v.a*Math.PI/180)]);
+
+const CX = 270, CY = 260, S = 85;
+const P = (x, y) => [CX + x*S, CY - y*S];
+const toXY = co => [0, 1].map(i => co.reduce((s, a, k) => s + a*V[k].d[i], 0));
+const f2 = v => (Math.abs(v) < 0.005 ? 0 : v).toFixed(2);
+
+const NAMED = {A:[2,0,0], B:[0,2,0], C:[0,0,2], D:[1.5,0,1]};
+const CLOUD = [];
+[0, 1, 2].forEach(k => [0.6, 1.0, 1.3, 1.7, 2.0, 2.4].forEach(a => { const co = [0,0,0]; co[k] = a; CLOUD.push(co); }));
+CLOUD.push([1.5,0,1], [0,1,1.2], [1.2,0.8,0], [0.7,0,1.6]);
+
+let step = 1, sel = 'A', found = 0, cloudSel = null, way = 0, animId = null;
+
+function defs(){
+  svg.innerHTML = '<defs>' + ['#999','#2e86de','#e67e22','#27ae60','#c0392b'].map((c, i) =>
+    `<marker id="ar${i}" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="${c}"/></marker>`).join('') + '</defs>';
+}
+const mid = c => ['#999','#2e86de','#e67e22','#27ae60','#c0392b'].indexOf(c);
+function arrow(x1, y1, x2, y2, c, w){
+  const [a, b] = P(x1, y1), [p, q] = P(x2, y2);
+  mk('line', {x1:a, y1:b, x2:p, y2:q, stroke:c, 'stroke-width':w || 2.5, 'marker-end':`url(#ar${mid(c)})`});
+}
+
+function axes(){
+  mk('rect', {x:CX-235, y:CY-235, width:470, height:470, fill:'#fbfbf9', stroke:'#e5e3dc', rx:10});
+  mk('line', {x1:CX-225, y1:CY, x2:CX+225, y2:CY, stroke:'#bbb'});
+  mk('line', {x1:CX, y1:CY+225, x2:CX, y2:CY-225, stroke:'#bbb'});
+  mk('text', {x:CX+222, y:CY-8, 'text-anchor':'end', 'font-size':12, fill:'#888'}, 'neuron 1');
+  mk('text', {x:CX+8, y:CY-212, 'font-size':12, fill:'#888'}, 'neuron 2');
+}
+function ray(angle, c, label){
+  const r = 2.55, t = angle*Math.PI/180;
+  const [x2, y2] = P(r*Math.cos(t), r*Math.sin(t));
+  mk('line', {x1:CX, y1:CY, x2, y2, stroke:c, 'stroke-width':1.6, 'stroke-dasharray':'6 5'});
+  if (label){
+    const [lx, ly] = P(2.25*Math.cos(t) + (Math.cos(t) < -0.1 ? 0 : 0.05), 2.25*Math.sin(t) + 0.18);
+    mk('text', {x:lx, y:ly, 'text-anchor':'middle', 'font-size':13, 'font-weight':700, fill:c}, label);
+  }
+}
+function dot(co, opts){
+  const [x, y] = toXY(co), [px, py] = P(x, y);
+  const e = mk('circle', {cx:px, cy:py, r:opts.r || 6, fill:opts.fill || '#555', stroke:opts.stroke || '#fff', 'stroke-width':2, class: opts.click ? 'pt' : ''});
+  if (opts.click) e.addEventListener('click', opts.click);
+  if (opts.label) mk('text', {x:px + 10, y:py - 8, 'font-size':14, 'font-weight':700}, opts.label);
+  return [x, y];
+}
+
+function bars(co, x0, y0, title){
+  mk('text', {x:x0, y:y0, 'font-size':14, 'font-weight':700}, title);
+  V.forEach((v, k) => {
+    const y = y0 + 22 + k*38;
+    mk('text', {x:x0, y:y+17, 'font-size':13, fill:v.c, 'font-weight':700}, v.n);
+    mk('rect', {x:x0+75, y, width:200, height:24, fill:'#f2f2f2', rx:4});
+    if (co[k] > 0) mk('rect', {x:x0+75, y, width:co[k]*80, height:24, fill:v.c, rx:4});
+    mk('text', {x:x0+290, y:y+17, class:'num'}, f2(co[k]));
+  });
+}
+
+const STEPS = [
+{ t:'1. x là gì',
+  h:`<p><code>x</code> là <b>vector activation</b> của <b>một token</b> tại <b>một vị trí đọc</b> trong model. Không chỉ là embedding.</p>
+     <p>Pythia đọc ở 19 chỗ (chấm đỏ): embedding, rồi trong mỗi layer có attention output, MLP output, và residual stream cuối layer. Mỗi chỗ có <b>dictionary riêng</b>. Ví dụ bên dưới: câu "The keys to the cabinet", token "keys", residual stream layer 3, ra 512 số.</p>`,
+  draw(){
+    const blocks = [{n:'Embedding', spots:1}];
+    for (let i = 0; i < 6; i++) blocks.push({n:'Layer ' + i, spots:3});
+    blocks.forEach((b, i) => {
+      const x = 20 + i*137, w = b.spots === 1 ? 100 : 120;
+      mk('rect', {x, y:40, width:w, height:120, rx:10, fill: i === 4 ? '#fdecea' : '#fff', stroke: i === 4 ? '#c0392b' : '#aaa', 'stroke-width':2});
+      mk('text', {x:x + w/2, y:62, 'text-anchor':'middle', 'font-size':13, 'font-weight':700}, b.n);
+      const names = b.spots === 1 ? ['embedding'] : ['attn out', 'MLP out', 'resid'];
+      names.forEach((nm, k) => {
+        const y = 85 + k*24;
+        mk('circle', {cx:x + 16, cy:y, r:6, fill: i === 4 && k === 2 ? '#c0392b' : '#f1948a'});
+        mk('text', {x:x + 28, y:y + 4, 'font-size':12}, nm);
+      });
+      if (i < blocks.length - 1) mk('line', {x1:x + w, y1:100, x2:20 + (i+1)*137 - 2, y2:100, stroke:'#999', 'stroke-width':1.6, 'marker-end':'url(#ar0)'});
+    });
+    mk('path', {d:'M574 157 C574 220 300 200 300 250', fill:'none', stroke:'#c0392b', 'stroke-width':2, 'marker-end':'url(#ar4)'});
+    mk('text', {x:40, y:250, 'font-size':14, 'font-weight':700}, 'x = residual stream layer 3, token "keys"');
+    for (let k = 0; k < 24; k++){
+      mk('rect', {x:40 + k*34, y:265, width:32, height:30, fill:'#fff', stroke:'#c0392b'});
+      mk('text', {x:56 + k*34, y:285, 'text-anchor':'middle', class:'num', 'font-size':10}, ((Math.sin(k*2.3)*1.7)).toFixed(1));
+    }
+    mk('text', {x:870, y:285, 'font-size':14}, '… 512 số');
+    mk('text', {x:40, y:335, 'font-size':14, fill:'#555'}, 'Mỗi ô là một neuron. Phần còn lại của trang thu x về 2 số để vẽ lên mặt phẳng.');
+    mk('text', {x:40, y:365, 'font-size':14, fill:'#555'}, 'Dữ liệu cho dictionary learning: lấy x ở cùng một chấm đỏ cho rất nhiều token, từ rất nhiều câu.');
+  }},
+{ t:'2. Vấn đề: đọc neuron không ra khái niệm',
+  h:`<p>Ta muốn biết: trong <code>x</code> có những khái niệm nào, mạnh bao nhiêu. Thứ duy nhất model đưa ra là các con số của neuron.</p>
+     <p>A là input HTML, B là input nấu ăn. Cả hai có <b>neuron 2 = 1.00</b>. Chỉ nhìn neuron 2 thì không phân biệt được (polysemantic). Neuron 1 cũng vậy: số âm hay dương không cho biết tên khái niệm. Model có 3 khái niệm nhưng chỉ có 2 neuron (superposition), nên không neuron nào ứng với đúng một khái niệm.</p>`,
+  draw(){
+    axes();
+    const rows = [];
+    ['A','B','C'].forEach(k => { const xy = dot(NAMED[k], {label:k, fill:'#555'}); rows.push([k, xy]); });
+    mk('text', {x:560, y:60, 'font-size':14, 'font-weight':700}, 'Giá trị neuron');
+    mk('text', {x:560, y:92, 'font-size':13, fill:'#888'}, 'điểm');
+    mk('text', {x:640, y:92, 'font-size':13, fill:'#888'}, 'neuron 1');
+    mk('text', {x:740, y:92, 'font-size':13, fill:'#888'}, 'neuron 2');
+    mk('text', {x:840, y:92, 'font-size':13, fill:'#888'}, 'thật ra là');
+    const real = {A:'HTML', B:'nấu ăn', C:'bóng đá'};
+    rows.forEach(([k, xy], i) => {
+      const y = 122 + i*32;
+      mk('text', {x:560, y, 'font-size':14, 'font-weight':700}, k);
+      mk('text', {x:640, y, class:'num'}, f2(xy[0]));
+      mk('rect', {x:732, y:y-16, width:56, height:22, fill: i < 2 ? '#fdecea' : 'none', rx:4});
+      mk('text', {x:740, y, class:'num', fill: i < 2 ? '#c0392b' : '#1d1d1f'}, f2(xy[1]));
+      mk('text', {x:840, y, 'font-size':13, fill:'#aaa'}, '? (' + real[k] + ')');
+    });
+    mk('text', {x:560, y:250, 'font-size':14, 'font-weight':700}, 'Thứ ta muốn có:');
+    mk('text', {x:560, y:278, 'font-size':14}, 'A → HTML: 2,  nấu ăn: 0,  bóng đá: 0');
+    mk('text', {x:560, y:304, 'font-size':14}, 'B → HTML: 0,  nấu ăn: 2,  bóng đá: 0');
+    mk('text', {x:560, y:340, 'font-size':13, fill:'#555'}, 'Một con số cho mỗi khái niệm, phần lớn bằng 0.');
+    mk('text', {x:560, y:362, 'font-size':13, fill:'#555'}, 'Đọc danh sách này thì biết ngay x chứa gì.');
+  }},
+{ t:'3. Nếu biết hướng thì đọc được',
+  h:`<p>Giả sử ta biết hướng của 3 khái niệm (3 đường nét đứt). Khi đó mỗi <code>x</code> viết được thành <b>hệ số × hướng</b>, cộng lại. Hệ số chính là danh sách ta muốn ở bước 2.</p>
+     <p class="mono">A = 2·v_HTML  ·  D = 1.5·v_HTML + 1·v_bóngđá</p>
+     <p><b>Bấm A, B, C, D</b> để xem hệ số. D chứa 2 khái niệm cùng lúc, vẫn đọc ra được.</p>`,
+  draw(){
+    axes();
+    V.forEach(v => ray(v.a, v.c, 'v_' + v.n));
+    const co = NAMED[sel];
+    let px = 0, py = 0;
+    co.forEach((a, k) => { if (a > 0){ const nx = px + a*V[k].d[0], ny = py + a*V[k].d[1]; arrow(px, py, nx, ny, V[k].c); px = nx; py = ny; } });
+    Object.keys(NAMED).forEach(k => dot(NAMED[k], {label:k, r: k === sel ? 8 : 6, fill: k === sel ? '#c0392b' : '#555', click(){ sel = k; render(); }}));
+    const xy = toXY(co);
+    mk('text', {x:560, y:50, 'font-size':14}, `Điểm ${sel}: x = [${f2(xy[0])}, ${f2(xy[1])}]  (giá trị neuron)`);
+    bars(co, 560, 95, 'Hệ số của từng hướng');
+    const parts = co.map((a, k) => a > 0 ? `${a}·v_${V[k].n.replace(' ', '')}` : null).filter(Boolean).join(' + ');
+    mk('text', {x:560, y:250, 'font-size':14, 'font-weight':700}, `${sel} = ${parts}`);
+    mk('text', {x:560, y:290, 'font-size':13, fill:'#555'}, 'Các mũi tên màu nối đuôi nhau, mũi cuối chạm đúng điểm.');
+  }},
+{ t:'4. Nhưng không ai biết các hướng',
+  h:`<p>Bước 3 dùng hướng do mình cho sẵn. Thực tế, ta chỉ có <b>rất nhiều điểm x</b> lấy từ model, không có nhãn, không có hướng (hình bên).</p>
+     <p>Model học các hướng trong lúc train, lưu chúng trong các con số của weight, không ghi tên. Probing tìm được <b>một</b> hướng nếu người nghiên cứu đã có giả thuyết và gán nhãn dữ liệu cho khái niệm đó. Với hàng chục nghìn khái niệm chưa ai biết tên, cách này không làm được.</p>`,
+  draw(){
+    axes();
+    CLOUD.forEach(co => dot(co, {r:5, fill:'#888'}));
+    mk('text', {x:560, y:60, 'font-size':14, 'font-weight':700}, 'Thứ ta có trong tay:');
+    mk('text', {x:560, y:88, 'font-size':14}, `${CLOUD.length} điểm x (Pythia: hàng triệu)`);
+    mk('text', {x:560, y:114, 'font-size':14}, 'mỗi điểm = giá trị neuron của 1 token');
+    mk('text', {x:560, y:160, 'font-size':14, 'font-weight':700}, 'Thứ ta không có:');
+    mk('text', {x:560, y:188, 'font-size':14}, 'nhãn khái niệm cho từng điểm');
+    mk('text', {x:560, y:214, 'font-size':14}, 'các hướng v');
+    mk('text', {x:560, y:240, 'font-size':14}, 'số lượng khái niệm');
+    mk('text', {x:560, y:290, 'font-size':13, fill:'#555'}, 'Nhìn kỹ: các điểm nằm dồn trên vài đường thẳng qua gốc.');
+    mk('text', {x:560, y:312, 'font-size':13, fill:'#555'}, 'Dictionary learning dựa vào đúng tính chất này.');
+  }},
+{ t:'5. Dictionary learning tìm hướng từ dữ liệu',
+  h:`<p>Dictionary learning nhận các điểm x và tìm một tập hướng sao cho <b>mỗi điểm viết được bằng ít hướng nhất</b>. Tập hướng tìm được gọi là <b>dictionary</b>.</p>
+     <p>Bấm <b>Chạy</b>: 3 hướng bắt đầu ngẫu nhiên, rồi xoay dần tới vị trí mà các điểm nằm trên chúng (minh họa kết quả, không phải thuật toán thật). Sau đó <b>bấm vào một điểm xám</b> để xem hệ số của nó.</p>`,
+  ctrl(){ return [['Chạy', () => runFind()], ['Đặt lại', () => { cancelAnimationFrame(animId); found = 0; cloudSel = null; render(); }]]; },
+  draw(){
+    axes();
+    const start = [80, 215, 330];
+    V.forEach((v, k) => {
+      const a = start[k] + (v.a - start[k])*found;
+      ray(a, found === 1 ? v.c : '#c0392b', found === 1 ? 'v' + (k+1) : null);
+    });
+    CLOUD.forEach((co, i) => dot(co, {r: i === cloudSel ? 8 : 5, fill: i === cloudSel ? '#c0392b' : '#888', click(){ cloudSel = i; render(); }}));
+    if (found < 1){
+      mk('text', {x:560, y:60, 'font-size':14}, found === 0 ? 'Chưa chạy. Ba đường đỏ là hướng khởi tạo ngẫu nhiên.' : 'Đang xoay các hướng…');
+      return;
+    }
+    if (cloudSel === null){ mk('text', {x:560, y:60, 'font-size':14}, 'Đã tìm xong 3 hướng v1, v2, v3. Bấm một điểm xám.'); return; }
+    const co = CLOUD[cloudSel], xy = toXY(co);
+    mk('text', {x:560, y:50, 'font-size':14}, `x = [${f2(xy[0])}, ${f2(xy[1])}]`);
+    mk('text', {x:560, y:95, 'font-size':14, 'font-weight':700}, 'Hệ số');
+    co.forEach((a, k) => {
+      const y = 117 + k*38;
+      mk('text', {x:560, y:y+17, 'font-size':13, fill:V[k].c, 'font-weight':700}, 'v' + (k+1));
+      mk('rect', {x:600, y, width:200, height:24, fill:'#f2f2f2', rx:4});
+      if (a > 0) mk('rect', {x:600, y, width:a*80, height:24, fill:V[k].c, rx:4});
+      mk('text', {x:815, y:y+17, class:'num'}, f2(a));
+    });
+    mk('text', {x:560, y:270, 'font-size':13, fill:'#555'}, 'Hướng chỉ có số thứ tự (v1, v2, v3), chưa có tên.');
+    mk('text', {x:560, y:292, 'font-size':13, fill:'#555'}, 'Thuật toán không biết v1 là "HTML".');
+  }},
+{ t:'6. Vì sao phải "ít hướng nhất"',
+  h:`<p>3 hướng trong mặt phẳng 2 chiều thì một điểm viết được theo <b>vô số cách</b>. Cả hai cách dưới đây cộng ra đúng A = [1.73, 1.00].</p>
+     <p>Cách 2 đọc ra "có cả 3 khái niệm", sai với thực tế. Điều kiện <b>sparse</b> (ít hệ số khác 0) buộc chọn cách 1. Không có điều kiện này thì hệ số không đọc được thành khái niệm.</p>`,
+  ctrl(){ return [['Cách 1: 1 hướng', () => { way = 0; render(); }, way === 0], ['Cách 2: 3 hướng', () => { way = 1; render(); }, way === 1]]; },
+  draw(){
+    axes();
+    V.forEach(v => ray(v.a, v.c, 'v_' + v.n));
+    const co = way === 0 ? [2,0,0] : [3,1,1];
+    let px = 0, py = 0;
+    co.forEach((a, k) => { if (a > 0){ const nx = px + a*V[k].d[0], ny = py + a*V[k].d[1]; arrow(px, py, nx, ny, V[k].c); px = nx; py = ny; } });
+    dot([2,0,0], {label:'A', r:8, fill:'#c0392b'});
+    bars(co, 560, 50, way === 0 ? 'Cách 1: 2·v_HTML' : 'Cách 2: 3·v_HTML + 1·v_nấuăn + 1·v_bóngđá');
+    const lines = way === 0
+      ? ['2·[0.87, 0.50] = [1.73, 1.00]']
+      : ['3·[0.87, 0.50]  = [2.60, 1.50]', '+ 1·[−0.87, 0.50] = [1.73, 2.00]', '+ 1·[0.00, −1.00] = [1.73, 1.00]'];
+    lines.forEach((l, i) => mk('text', {x:560, y:210 + i*24, class:'num'}, l));
+    mk('text', {x:560, y:310, 'font-size':14, 'font-weight':700, fill: way === 0 ? '#27ae60' : '#c0392b'},
+      way === 0 ? '1 hệ số khác 0 → sparse chọn cách này' : '3 hệ số khác 0 → sparse loại cách này');
+  }},
+{ t:'7. Kết quả, và nó giải quyết vấn đề gì',
+  h:`<p><b>Trước:</b> x là 512 giá trị neuron, mỗi neuron trộn nhiều khái niệm, không đọc được.</p>
+     <p><b>Sau:</b> x được viết lại thành 32 768 hệ số, mỗi hệ số ứng với một hướng, và chỉ vài hệ số khác 0. Mỗi hướng <code>vᵢ</code> là một <b>feature</b>, hệ số của nó là <b>feature activation</b>. Con người xem các input làm feature bật mạnh nhất rồi đặt tên. Paper dùng các feature này làm node của circuit thay cho neuron.</p>`,
+  draw(){
+    mk('text', {x:30, y:40, 'font-size':15, 'font-weight':700}, 'Trước: 512 giá trị neuron (vẽ 24), hầu hết khác 0, mỗi số trộn nhiều khái niệm');
+    for (let k = 0; k < 24; k++){
+      const v = Math.sin(k*2.3)*1.7;
+      mk('rect', {x:30 + k*38, y:55, width:36, height:34, fill:'#fff', stroke:'#888'});
+      mk('text', {x:48 + k*38, y:77, 'text-anchor':'middle', class:'num', 'font-size':10}, v.toFixed(1));
+    }
+    mk('text', {x:500, y:130, 'text-anchor':'middle', 'font-size':14, fill:'#c0392b', 'font-weight':700}, '↓  viết lại x theo dictionary (32 768 hướng)');
+    mk('text', {x:30, y:175, 'font-size':15, 'font-weight':700}, 'Sau: 32 768 hệ số (vẽ 24), chỉ vài cái khác 0, mỗi cái ứng với một feature');
+    const on = {3:[2.1, 'danh từ số nhiều'], 11:[0.7, 'trong cụm danh từ'], 19:[1.4, 'chủ ngữ của câu']};
+    for (let k = 0; k < 24; k++){
+      const o = on[k];
+      mk('rect', {x:30 + k*38, y:190, width:36, height:34, fill: o ? '#fdecea' : '#fff', stroke: o ? '#c0392b' : '#ddd', 'stroke-width': o ? 2 : 1});
+      mk('text', {x:48 + k*38, y:212, 'text-anchor':'middle', class:'num', 'font-size':10, fill: o ? '#c0392b' : '#bbb'}, o ? o[0].toFixed(1) : '0');
+      if (o){
+        mk('line', {x1:48 + k*38, y1:226, x2:48 + k*38, y2:262, stroke:'#c0392b'});
+        mk('text', {x:48 + k*38, y:280, 'text-anchor':'middle', 'font-size':12, fill:'#c0392b'}, 'v' + (k*1371 + 82) + ': ' + o[1]);
+      }
+    }
+    mk('text', {x:30, y:340, 'font-size':14, 'font-weight':700}, 'Các vấn đề được giải quyết:');
+    [
+      'Polysemantic: một feature chỉ bật cho một khái niệm, nên đọc từng hệ số là biết khái niệm nào có mặt.',
+      'Superposition: số hướng (32 768) lớn hơn số neuron (512), đủ chỗ cho các khái niệm bị nén chung.',
+      'Không cần nhãn: hướng được tìm từ dữ liệu, tên được đặt sau. Người nghiên cứu không phải có giả thuyết từ trước.'
+    ].forEach((l, i) => mk('text', {x:30, y:368 + i*26, 'font-size':14}, '• ' + l));
+    mk('text', {x:30, y:470, 'font-size':13, fill:'#888'}, 'Tên feature và số thứ tự ở hàng dưới là minh họa. Phương pháp cụ thể paper dùng để học dictionary là SAE (slide tiếp).');
+  }}
+];
+
+function runFind(){
+  cancelAnimationFrame(animId);
+  cloudSel = null;
+  const t0 = performance.now();
+  const tick = now => {
+    const t = Math.min(1, (now - t0)/1600);
+    found = t < 1 ? 0.0001 + (1 - Math.pow(1 - t, 3))*0.9998 : 1;
+    render();
+    if (t < 1) animId = requestAnimationFrame(tick);
+  };
+  animId = requestAnimationFrame(tick);
+}
+
+const dotsEl = document.getElementById('dots');
+STEPS.forEach((s, i) => {
+  const d = document.createElement('span');
+  d.textContent = i + 1; d.title = s.t;
+  d.onclick = () => go(i + 1);
+  dotsEl.appendChild(d);
+});
+
+function go(n){
+  if (n < 1 || n > STEPS.length) return;
+  cancelAnimationFrame(animId);
+  if (step === 5 && n !== 5 && found < 1) found = 0;
+  step = n; render();
+}
+
+function render(){
+  const s = STEPS[step - 1];
+  document.getElementById('explain').innerHTML = `<h3>${s.t}</h3>` + s.h;
+  const ctrl = document.getElementById('ctrl');
+  ctrl.innerHTML = '';
+  if (s.ctrl) s.ctrl().forEach(([label, fn, on]) => {
+    const b = document.createElement('button');
+    b.textContent = label; if (on) b.className = 'on';
+    b.onclick = fn; ctrl.appendChild(b);
+  });
+  defs(); s.draw();
+  [...dotsEl.children].forEach((d, i) => d.classList.toggle('on', i === step - 1));
+  document.getElementById('prev').disabled = step === 1;
+  document.getElementById('next').disabled = step === STEPS.length;
+}
+
+document.getElementById('prev').onclick = () => go(step - 1);
+document.getElementById('next').onclick = () => go(step + 1);
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') go(step + 1);
+  if (e.key === 'ArrowLeft') go(step - 1);
+});
+render();
+</script>
+</body>
+</html>

@@ -45,7 +45,7 @@ tr.paper td{background:#f8f1fb}
 <body>
 <main>
 <h1>Node là gì, feature là gì, và mỗi nghiên cứu chọn node ra sao</h1>
-<p class="sub">Dùng lại model đồ chơi ở <span class="mono">model-flow.html</span>: mỗi vector có 4 số, theo dõi token <b>c</b>, vẽ 1 layer. Số trong Pythia ghi bên cạnh.</p>
+<p class="sub">Dùng lại model thu nhỏ ở <span class="mono">model-flow.html</span>: mỗi vector có 4 số, theo dõi token <b>c</b>, vẽ 1 layer. Số trong Pythia ghi bên cạnh.</p>
 
 <section>
   <h2>1. Hai định nghĩa</h2>
@@ -76,7 +76,7 @@ tr.paper td{background:#f8f1fb}
 
 <section>
   <h2>3. Feature và error node tính ra thế nào (cột residual stream ở hình trên)</h2>
-  <p>SAE nhận vector residual stream <span class="mono">x = [1.5, 1.5, 1.0, −0.5]</span> và trả về 8 feature activation (đồ chơi; Pythia: 32 768). Chỉ 2 cái khác 0:</p>
+  <p>SAE nhận vector residual stream <span class="mono">x = [1.5, 1.5, 1.0, −0.5]</span> và trả về 8 feature activation (bản thu nhỏ; Pythia: 32 768). Chỉ 2 cái khác 0:</p>
   <div class="eq">f = [0, 0, 2.0, 0, 0, 0, 0.7, 0]
 
 v₃ ("danh từ số nhiều")   = [0.50, 0.50, 0.50, −0.50]

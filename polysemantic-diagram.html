@@ -46,7 +46,7 @@ td.big{font-weight:700;color:var(--hi)}
 <body>
 <main>
 <h1>Neuron là trục, vector là điểm, và vì sao neuron bị polysemantic</h1>
-<p class="sub">Model đồ chơi chỉ có <b>2 chiều</b>, tức là 2 neuron. Pythia có 512 chiều, nhưng cách hoạt động giống hệt. Mọi con số là số minh họa.</p>
+<p class="sub">Model thu nhỏ, đã giảm chiều cho dễ vẽ, chỉ có <b>2 chiều</b>, tức là 2 neuron. Pythia có 512 chiều, nhưng cách hoạt động giống hệt. Mọi con số là số minh họa.</p>
 
 <section>
   <h2>Bước 1. Vector là một điểm, mỗi neuron là một trục</h2>
@@ -80,7 +80,7 @@ td.big{font-weight:700;color:var(--hi)}
 
 <section>
   <h2>Bước 3. Ba khái niệm trong 2 chiều: neuron polysemantic</h2>
-  <p>Giờ model phải biểu diễn 3 khái niệm ("HTML", "tên Hàn", "bóng đá") mà chỉ có 2 trục. Không thể gán mỗi khái niệm một trục riêng, nên model đặt chúng theo 3 <b>hướng nằm chéo</b>, cách nhau 120°.</p>
+  <p>Giờ model phải biểu diễn 3 khái niệm ("HTML", "nấu ăn", "bóng đá") mà chỉ có 2 trục. Không thể gán mỗi khái niệm một trục riêng, nên model đặt chúng theo 3 <b>hướng nằm chéo</b>, cách nhau 120°.</p>
   <div class="row">
     <svg id="p2" viewBox="0 0 400 400"></svg>
     <div>
@@ -88,9 +88,9 @@ td.big{font-weight:700;color:var(--hi)}
       <div class="btns" id="b2"></div>
       <div class="bars" id="bars2"></div>
       <table id="t2"></table>
-      <div class="verdict poly">Neuron #2 bằng <b>1.0</b> với cả HTML lẫn tên Hàn. Nếu chỉ nhìn neuron #2 = 1.0 thì không biết input là HTML hay tên Hàn. Neuron #2 là <b>polysemantic</b>.<br>
-      Nguyên nhân: hướng của HTML và hướng của tên Hàn đều <b>chéo</b>, nên cả hai đều có một phần nằm theo trục dọc. Chiếu mỗi hướng xuống trục dọc đều ra 1.0 (đường nét đứt trên hình).</div>
-      <p class="hint">Còn cả vector (cả 2 neuron cùng lúc) thì vẫn phân biệt được: HTML ở <span class="mono">[1.7, 1.0]</span>, tên Hàn ở <span class="mono">[−1.7, 1.0]</span>. Thông tin không bị mất, nó chỉ không nằm gọn trong một neuron. Cách đọc theo hướng thay vì theo trục là việc SAE ở nhóm 2 sẽ làm.</p>
+      <div class="verdict poly">Neuron #2 bằng <b>1.0</b> với cả HTML lẫn nấu ăn. Nếu chỉ nhìn neuron #2 = 1.0 thì không biết input là HTML hay nấu ăn. Neuron #2 là <b>polysemantic</b>.<br>
+      Nguyên nhân: hướng của HTML và hướng của nấu ăn đều <b>chéo</b>, nên cả hai đều có một phần nằm theo trục dọc. Chiếu mỗi hướng xuống trục dọc đều ra 1.0 (đường nét đứt trên hình).</div>
+      <p class="hint">Còn cả vector (cả 2 neuron cùng lúc) thì vẫn phân biệt được: HTML ở <span class="mono">[1.7, 1.0]</span>, nấu ăn ở <span class="mono">[−1.7, 1.0]</span>. Thông tin không bị mất, nó chỉ không nằm gọn trong một neuron. Cách đọc theo hướng thay vì theo trục là việc SAE ở nhóm 2 sẽ làm.</p>
     </div>
   </div>
 </section>
@@ -235,14 +235,14 @@ setup('p1', 'b1', 'bars1', 't1',
    {key:'plain', label:'Tôi ăn cơm', v:[0, 0]}]);
 
 setup('p2', 'b2', 'bars2', 't2',
-  [{key:'html', name:'HTML', v:[1.7, 1.0]}, {key:'korea', name:'tên Hàn', v:[-1.7, 1.0]}, {key:'ball', name:'bóng đá', v:[0, -2]}],
+  [{key:'html', name:'HTML', v:[1.7, 1.0]}, {key:'korea', name:'nấu ăn', v:[-1.7, 1.0]}, {key:'ball', name:'bóng đá', v:[0, -2]}],
   [{key:'html', label:'<div class="header">', v:[1.7, 1.0]},
-   {key:'korea', label:'Kim Min-jun', v:[-1.7, 1.0]},
+   {key:'korea', label:'Phi tỏi rồi xào rau', v:[-1.7, 1.0]},
    {key:'ball', label:'Messi sút bóng', v:[0, -2]},
-   {key:'plain', label:'Tôi ăn cơm', v:[0, 0]}]);
+   {key:'plain', label:'Tôi đi học', v:[0, 0]}]);
 
 // Step 4: N concepts evenly spaced in 2-D, toggle which are present, read each by projection
-const NAMES = ['HTML','tên Hàn','bóng đá','toán','nấu ăn','âm nhạc','y học','luật','thời tiết','Python','thơ','chứng khoán'];
+const NAMES = ['HTML','nấu ăn','bóng đá','toán','du lịch','âm nhạc','y học','luật','thời tiết','Python','thơ','chứng khoán'];
 const STRENGTH = 2;
 let N = 3, present = new Set([0]);
 const p3 = document.getElementById('p3');
