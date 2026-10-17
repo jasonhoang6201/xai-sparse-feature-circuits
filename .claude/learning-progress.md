@@ -97,7 +97,11 @@ The user studies the paper keyword by keyword using `keywords-slides.html`, read
 - Corrected: the decoder does not "understand" the layer; training does not match the columns to pre-existing v. v is defined as whatever the columns end up as; the training target is only reconstruction + sparsity. Concept names are attached afterwards.
 
 ## Next concept (resume here)
-- **Now: slide 11 Sparsity, L1 loss.**
+- **Now: slide 12 Feature, feature activation.**
+- Slide 11 Sparsity, L1 loss confirmed:
+  - L1 = Σ|·|, L2 = √Σ(·)², L0 = count of nonzeros (Lp norm family). L1/L2 are only formulas; the meaning depends on what they are applied to (error → MAE/MSE, weights → Lasso/weight decay, activations → sparsity). SAE: L2 on x − x̂, L1 on f (activations, not SAE weights).
+  - Why L1 gives exact 0 and L2 does not: constant gradient (1 → 0 in 10 steps of −0.1) vs gradient proportional to f (×0.8 per step, never 0).
+  - In an SAE the exact 0 comes from ReLU on W_enc·x + b; L1 trains b/W_enc so most pre-activations are negative. Tiny values (0.001) still occur with plain ReLU (Pythia SAEs); JumpReLU (Gemma Scope) has a learned threshold θ that zeroes them.
 - The user is still in group "1 Bối cảnh". Do NOT jump ahead to group 2.
 - Slide 8 Circuit was introduced (earlier circuits used heads / whole MLP as units, too coarse and polysemantic; paper uses SAE features). The user said "tiếp tục" without full confirmation.
 - OPEN, the user will revisit later ("cuốn chiếu sau"): "each output neuron of a W·x layer has its own row of weights; the residual addition x + f(x) has no weights". Shown with a 2-D example (W rows [0.87,0.5], [−0.5,0.87]; f(x)=[2,0]; residual [3.73,1.0]) and Pythia shapes W₁ 2048×512, W₂ 512×2048. The user said it was still not fully clear.
