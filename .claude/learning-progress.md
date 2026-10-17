@@ -87,8 +87,17 @@ The user studies the paper keyword by keyword using `keywords-slides.html`, read
 - Side topics answered: Pythia = plain next-token LM suite by EleutherAI on The Pile (paper gives no explicit reason for choosing it; inferred: small, open weights, own SAEs; Gemma-2-2B used with open Gemma Scope SAEs). Why later layers carry more processed info: each token has its own vector, attention reads only earlier tokens, multi-step info (subject number → carried to verb position) needs several layers; paper's RC circuit shows this.
 - Correction-style feedback recorded in `.claude/memory/correct-directly-no-praise.md`; "đồ chơi" banned in `.claude/rules/term-language.md`.
 
+### 11. Slide 10: SAE (confirmed)
+- Dictionary learning = the problem (find directions v, then sparse coefficients per x); SAE = the method the paper uses to solve it. Training an SAE is doing dictionary learning. Other methods: classical sparse coding (iterative optimization per x, slow at billions of tokens); SAE variants (Gemma Scope JumpReLU, Gated, TopK).
+- SAE = small NN with encoder + decoder, one per read spot (Pythia 19), trained on a frozen LM. Encoder (ReLU-linear) gives coefficients f; decoder x̂ = W_dec·f; loss = L2 reconstruction + L1 (paper p.4).
+- Why coefficients matter: they are the node values; used to name features (top-activating tokens) and to intervene for circuits.
+- Why train and not use a fixed rule: nobody knows the 32768 × 512 direction numbers beforehand; training finds them. At explain time, computing f is a fixed computation, with no retraining.
+- Decoder is still needed after training: ε = x − x̂ (error node) and intervention (edit f → decoder rebuilds x → put back into the LM).
+- Decoder columns = v because W_dec·f = Σ fᵢ·(column i), the same form as Σ fᵢ·vᵢ (2-D example W_dec columns [0.87,0.5], [−0.87,0.5], [0,−1]; f=[2,0,0] → [1.74,1.0]). Pythia W_dec 512 × 32768.
+- Corrected: the decoder does not "understand" the layer; training does not match the columns to pre-existing v. v is defined as whatever the columns end up as; the training target is only reconstruction + sparsity. Concept names are attached afterwards.
+
 ## Next concept (resume here)
-- **Now: slide 10 SAE** (introduced right after Dictionary learning was confirmed).
+- **Now: slide 11 Sparsity, L1 loss.**
 - The user is still in group "1 Bối cảnh". Do NOT jump ahead to group 2.
 - Slide 8 Circuit was introduced (earlier circuits used heads / whole MLP as units, too coarse and polysemantic; paper uses SAE features). The user said "tiếp tục" without full confirmation.
 - OPEN, the user will revisit later ("cuốn chiếu sau"): "each output neuron of a W·x layer has its own row of weights; the residual addition x + f(x) has no weights". Shown with a 2-D example (W rows [0.87,0.5], [−0.5,0.87]; f(x)=[2,0]; residual [3.73,1.0]) and Pythia shapes W₁ 2048×512, W₂ 512×2048. The user said it was still not fully clear.
