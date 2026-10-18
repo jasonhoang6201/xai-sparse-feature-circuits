@@ -122,9 +122,9 @@ Tổng: 16 slide, khoảng 14:30. Nếu thiếu thời gian thì rút slide 12 (
 
 | | Pythia-70M | Gemma-2-2B |
 |---|---|---|
-| Layer, d_model | 6 layer, 512 | 26 layer, 2304 |
-| SAE | tác giả tự train, 19 SAE (embedding + attn out, MLP out, residual × 6 layer) | Gemma Scope (Lieberum 2024), không có SAE cho embedding |
-| d_SAE | 64 × d = 32 768 | 8 × d (bản dùng: 16 384) |
+| Layer | layer 0–5 (App B.1.3) | 26 layer (App B.2) |
+| SAE | tác giả tự train: embedding, và attn out, MLP out, residual của mỗi layer | Gemma Scope (Lieberum 2024): attn, MLP, residual của mỗi layer, không dùng SAE cho embedding |
+| d_SAE | 64 × d | 8 × d (§2); App B.2 ghi width 16 384 |
 | Encoder | ReLU | JumpReLU |
 
 - **Node** = một `fᵢ` hoặc một `ε` tại một vị trí token cụ thể.
@@ -162,7 +162,7 @@ Tổng: 16 slide, khoảng 14:30. Nếu thiếu thời gian thì rút slide 12 (
 
 ### Slide 8. Chi phí, AtP và IG
 **Trên slide**
-- Tính Eq. 2 cho từng node: mỗi node một lần forward. Pythia có 19 SAE × (32 768 feature + 1 error) ≈ 622 600 node **cho mỗi vị trí token** (con số tự tính).
+- Tính Eq. 2 cho từng node: mỗi node cần một lần chạy riêng. Số node rất lớn nên paper viết Eq. 2 "cannot be done efficiently".
 - **Attribution patching (AtP)**, Eq. 3: `IE ≈ ∇ₐm · (a_patch − a_clean)`
   - `∇ₐm` (gradient của m theo node a, tại a_clean)
   - 2 forward + 1 backward cho **mọi** node cùng lúc.
@@ -175,7 +175,7 @@ Tổng: 16 slide, khoảng 14:30. Nếu thiếu thời gian thì rút slide 12 (
 **Hình**: Figure 25 p.36 (approximate IE so với exact IE: AtP ở trên, IG ở dưới).
 
 **Lời nói**
-"Tính đúng IE cho từng node thì cần hàng trăm nghìn lần chạy cho mỗi vị trí token. Attribution patching thay phép ghi đè bằng xấp xỉ bậc nhất: lấy gradient nhân với độ chênh lệch giá trị. Chỉ cần 2 forward và 1 backward là có IE xấp xỉ cho mọi node. Nhưng hình 25 cho thấy AtP ước lượng thấp ở MLP layer 0 và residual stream các layer đầu. Integrated gradients lấy trung bình gradient trên 10 điểm, nên sát IE thật hơn và tốn khoảng 10 lần. Tác giả dùng IG khi tính node."
+"Tính đúng IE thì mỗi node cần một lần chạy riêng, mà số node là mọi feature của mọi SAE tại mọi vị trí token. Attribution patching thay phép ghi đè bằng xấp xỉ bậc nhất: lấy gradient nhân với độ chênh lệch giá trị. Chỉ cần 2 forward và 1 backward là có IE xấp xỉ cho mọi node. Nhưng hình 25 cho thấy AtP ước lượng thấp ở MLP layer 0 và residual stream các layer đầu. Integrated gradients lấy trung bình gradient trên 10 điểm, nên sát IE thật hơn và tốn khoảng 10 lần. Tác giả dùng IG khi tính node."
 
 **Nguồn**: Eq. 3–4 p.3; §3.1 p.4; App H p.36; repo github.com/saprmarks/feature-circuits, `circuit.py`.
 
@@ -245,7 +245,7 @@ Tổng: 16 slide, khoảng 14:30. Nếu thiếu thời gian thì rút slide 12 (
 **Hình**: Figure 3 p.5 (faithfulness và completeness theo số node).
 
 **Lời nói**
-"Feature circuit nhỏ hơn neuron circuit khoảng một bậc độ lớn ở Pythia và hai bậc ở Gemma mà vẫn giữ được cùng mức hành vi. Con người cũng chấm feature dễ đọc hơn neuron. Chỗ cần lưu ý là các con số này có tính error node, và riêng residual error thì không bỏ được."
+"Ở Pythia, khoảng 100 node feature đã giải thích phần lớn hành vi, còn neuron cần khoảng 1 500 mới giải thích được một nửa. Ở Gemma là 500 so với 50 000. Con người cũng chấm feature dễ đọc hơn neuron. Chỗ cần lưu ý là các con số này có tính error node, và riêng residual error thì không bỏ được."
 
 **Nguồn**: §3.2 p.6; Figure 3 p.5; Table 7 p.33.
 
@@ -306,12 +306,12 @@ Tổng: 16 slide, khoảng 14:30. Nếu thiếu thời gian thì rút slide 12 (
 | Oracle | 93.0 | 49.4 | 91.9 |
 
 - Gemma: SHIFT + retrain đạt 95.0 / 52.4 / 92.9 (oracle 95.0 / 50.6 / 93.1). SHIFT không retrain làm giảm profession (76.0), retrain khôi phục lại.
-- Gender ≈ 50% = đoán ngẫu nhiên → classifier gần như không còn dùng giới tính.
+- Gender accuracy (Pythia) giảm từ 87.4 xuống 52.0, gần mức oracle 49.4 → classifier gần như không còn dùng giới tính.
 - Bỏ phiên bản SHIFT dùng neuron, vì gần như không neuron nào đọc được nghĩa.
 - Neuron skyline (chọn neuron bằng balanced set) vẫn thua, vì neuron liên quan giới tính cũng mang thông tin nghề.
 
 **Lời nói**
-"Với Pythia, worst-group accuracy tăng từ 24 lên 76 chỉ nhờ bỏ feature, và lên 89 sau khi train lại head, gần bằng oracle train trên data cân bằng. Ablate ngẫu nhiên cùng số feature thì không đổi gì. Làm với neuron thì không được, vì mỗi neuron trộn cả thông tin giới tính lẫn thông tin nghề."
+"Với Pythia, worst-group accuracy tăng từ 24.4 lên 76.0 chỉ nhờ bỏ feature, và lên 89.0 sau khi train lại head, gần bằng oracle train trên data cân bằng. Ablate ngẫu nhiên cùng số feature thì không đổi gì. Làm với neuron thì không được, vì mỗi neuron trộn cả thông tin giới tính lẫn thông tin nghề."
 
 **Nguồn**: Table 2 p.8; §4 Results p.9.
 
@@ -347,9 +347,9 @@ Tổng: 16 slide, khoảng 14:30. Nếu thiếu thời gian thì rút slide 12 (
   3. Đánh giá phần lớn là định tính. Khó đánh giá dictionary và circuit khi không có task downstream.
   4. Gán nhãn feature là định tính, có thể khác nhau giữa người gán và giữa các task.
 - Hướng sau paper:
-  - Tự động hóa SHIFT: thay người gán nhãn bằng LLM, thành metric SCR/TPP để đánh giá SAE (Karvonen, Rager, Marks, Nanda 2024).
-  - Thay SAE bằng transcoder (Dunefsky, Chlenski, Nanda, NeurIPS 2024). Cross-layer transcoder và attribution graph (Anthropic, *Circuit Tracing*, 03/2025).
-  - Phê bình SAE: feature absorption, feature tắt ở chỗ đáng lẽ phải kích hoạt (Chanin et al. 2024). SAE probe không vượt baseline đơn giản (Kantamneni et al., ICML 2025).
+  - Tự động hóa SHIFT: thay người gán nhãn bằng LLM, thành metric SCR/TPP để đánh giá SAE (Karvonen, Rager, Marks, Nanda).
+  - Thay SAE bằng transcoder (Dunefsky, Chlenski, Nanda). Cross-layer transcoder và attribution graph (Anthropic, *Circuit Tracing*).
+  - Phê bình SAE: feature absorption, feature tắt ở chỗ đáng lẽ phải kích hoạt (Chanin et al.). SAE probe không vượt baseline đơn giản (Kantamneni et al.).
 
 **Lời nói**
 "Paper tự nêu bốn hạn chế. Ba trong số đó xoay quanh SAE và việc gán nhãn thủ công. Các công trình sau đi tiếp đúng những chỗ này. Chính nhóm tác giả tự động hóa SHIFT bằng LLM. Một số nhóm thay SAE bằng transcoder. Cũng có các bài chỉ ra rằng feature của SAE không phải lúc nào cũng kích hoạt đúng chỗ."

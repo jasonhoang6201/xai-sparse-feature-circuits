@@ -2,3 +2,4 @@
 - [One concept at a time](one-concept-at-a-time.md) — explain one concept per reply, wait for confirmation before the next
 - [Correct directly, no praise](correct-directly-no-praise.md) — when the user restates, skip "bạn hiểu đúng", fix the wrong parts in a conversational tone
 - [Annotate formula symbols](annotate-formula-symbols.md) — write (meaning) after every symbol like W_U, x_L, W_enc so the user learns to read formulas
+- [Only paper numbers](only-paper-numbers.md) — slide/seminar files cite only numbers stated in the paper, none self-computed or from the web
