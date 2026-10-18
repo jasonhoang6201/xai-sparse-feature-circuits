@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Từ câu đến feature</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f7f6f2;--card:#fff;--ink:#1d1d1f;--mute:#6b6b70;--line:#dcdad3;--hi:#c0392b;--hibg:#fdecea;--grn:#1e8449;--grnbg:#e8f6ee;--blu:#2464a8;--blubg:#e8f0fa;--org:#b9770e;--orgbg:#fdf2e0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Be Vietnam Pro",sans-serif;line-height:1.55}
+main{max-width:1100px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:24px;margin:0 0 4px}
+h2{font-size:20px;margin:6px 0 10px}
+.sub{color:var(--mute);margin:0 0 16px}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px}
+code,.mono{font-family:"JetBrains Mono",monospace;font-size:14px}
+.pipe{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.pipe span{border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:13px;cursor:pointer;color:var(--mute);background:#fff}
+.pipe span.on{background:var(--hi);border-color:var(--hi);color:#fff;font-weight:600}
+.nav{display:flex;gap:10px;margin-bottom:12px}
+.nav button{font:inherit;font-size:15px;padding:7px 16px;border-radius:8px;border:2px solid var(--ink);background:#fff;cursor:pointer}
+.nav button:disabled{opacity:.3;cursor:default}
+.step{display:none}.step.on{display:block}
+.explain{border-left:4px solid var(--hi);background:var(--hibg);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0}
+.ok{border-left-color:var(--grn);background:var(--grnbg)}
+.note{color:var(--mute);font-size:14px}
+.scroll{overflow-x:auto}
+.toks{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+.tok{border:2px solid var(--ink);border-radius:10px;padding:8px 14px;text-align:center;min-width:92px;background:#fff}
+.tok .p{font-size:12px;color:var(--mute)}
+.tok b{font-size:17px}
+.tok.sel{border-color:var(--hi);background:var(--hibg)}
+.tok.blank{border-style:dashed;color:var(--mute)}
+.vec{font-family:"JetBrains Mono",monospace;font-size:13px;margin-top:6px}
+.picker{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 12px}
+.picker button{font:inherit;font-size:14px;padding:5px 12px;border-radius:8px;border:2px solid var(--ink);background:#fff;cursor:pointer}
+.picker button.on{background:var(--hi);border-color:var(--hi);color:#fff}
+.flow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0}
+.box{border:2px solid var(--ink);border-radius:10px;padding:10px 12px;background:#fff}
+.box.gray{background:#f1efe9}
+.arr{font-size:22px;color:var(--mute)}
+.bars{display:grid;grid-template-columns:auto 1fr auto;gap:6px 10px;align-items:center;font-size:14px;max-width:620px}
+.bar{height:16px;background:var(--blu);border-radius:4px}
+.bar.zero{background:transparent;border:1px dashed var(--line);width:100% !important;height:14px}
+table{border-collapse:collapse;margin:10px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:6px 10px;text-align:center}
+th{background:#f1efe9}
+td.l,th.l{text-align:left}
+td.n{font-family:"JetBrains Mono",monospace}
+td.z{color:#bbb}
+td.hit{background:var(--blubg);font-weight:700}
+td.cross{background:var(--orgbg);font-weight:700}
+td.pick{outline:3px solid var(--hi);outline-offset:-3px}
+svg text{font-family:"Be Vietnam Pro",sans-serif}
+</style>
+</head>
+<body>
+<main>
+<h1>Từ một câu đến feature activation f</h1>
+<p class="sub">Ví dụ đơn giản, đã giảm chiều cho dễ hiểu: mỗi vector x có <b>4 số</b> (Pythia-70M: 512), SAE có <b>6 feature</b> (Pythia: 32 768). Tên feature và mọi con số là minh họa, không lấy từ paper. Dùng ← → để chuyển bước.</p>
+
+<section>
+  <div class="pipe" id="pipe"></div>
+  <div class="nav"><button id="prev">← Trước</button><button id="next">Tiếp →</button></div>
+
+  <!-- 1 -->
+  <div class="step">
+    <h2>1. Câu → token</h2>
+    <p>Tokenizer tách câu thành các token, mỗi token có một vị trí:</p>
+    <div class="toks" id="toks1"></div>
+    <div class="explain">Chỗ trống "___" <b>không phải token</b>. Model đoán từ tiếp theo ("is" hay "are") bằng vector của <b>token cuối cùng</b>, ở đây là "cabinet" (vị trí 4).</div>
+    <p class="note">Câu này: chủ ngữ "keys" số nhiều, danh từ gây nhiễu "cabinet" số ít. Đáp án đúng là "are".</p>
+  </div>
+
+  <!-- 2 -->
+  <div class="step">
+    <h2>2. Mỗi token có vector riêng, ở mọi layer</h2>
+    <p>Embedding biến mỗi token thành một vector. Sau đó mỗi layer cập nhật vector của <b>từng token</b>. Câu 5 token thì tại mỗi layer có 5 vector, không có vector nào cho cả câu.</p>
+    <div class="scroll"><svg id="grid" width="900" height="300" viewBox="0 0 900 300"></svg></div>
+    <div class="explain">Mũi tên đỏ: attention ở layer 2 cho token "cabinet" đọc vector của token "keys" (token trước nó). Nhờ vậy thông tin "chủ ngữ số nhiều" được chép sang vector của "cabinet". Đây là bước duy nhất mà token này đọc được token khác.</div>
+    <p><b>x</b> trong SAE = <b>một ô</b> trong lưới này: vector của một token tại một chỗ đọc. Ô viền đỏ là x của "cabinet" ở resid layer 2.</p>
+  </div>
+
+  <!-- 3 -->
+  <div class="step">
+    <h2>3. Một x → SAE → các f</h2>
+    <p>Chọn token để xem x của nó (resid layer 2) đi qua SAE encoder:</p>
+    <div class="picker" id="pick3"></div>
+    <div class="flow">
+      <div class="box"><div class="note">x của token <b id="t3"></b></div><div class="vec" id="x3"></div></div>
+      <div class="arr">→</div>
+      <div class="box gray"><b>SAE encoder</b></div>
+      <div class="arr">→</div>
+      <div class="box" style="flex:1;min-width:300px"><div class="note">6 hệ số f (feature activation)</div><div class="bars" id="bars3"></div></div>
+    </div>
+    <div class="explain" id="exp3"></div>
+  </div>
+
+  <!-- 4 -->
+  <div class="step">
+    <h2>4. Chạy SAE cho cả 5 token → bảng f</h2>
+    <p>Cùng một SAE chạy 5 lần, mỗi lần trên x của một token. Mỗi ô là một con số f. <b>Mỗi ô là một node.</b></p>
+    <div class="scroll" id="tbl4"></div>
+    <div class="explain">
+      Cột "keys": f₂ = 3, vì vector của "keys" chứa "danh từ số nhiều".<br>
+      Cột "cabinet" có <b>hai</b> hệ số khác 0: f₁ = 2.5 ("cabinet" là danh từ số ít) và <b>f₅ = 2</b> ("chủ ngữ số nhiều", thông tin attention chép từ "keys" sang ở bước 2).<br>
+      f₅ không mô tả cả câu. Nó mô tả vector của token "cabinet", và vector đó chứa thông tin đọc được từ token trước.
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="step">
+    <h2>5. f tác động thế nào: decoder dựng lại x</h2>
+    <p>Chọn token. Mỗi f nhân với hướng v (cột của decoder, cố định), cộng lại và cộng ε được đúng x:</p>
+    <div class="picker" id="pick5"></div>
+    <div class="scroll" id="tbl5"></div>
+    <div class="explain">f chỉ là <b>hệ số</b>; tác động của nó lên model là phần <b>f·v</b> nằm trong x. Patch f₅ ở "cabinet" từ 2 xuống 0 nghĩa là bỏ 2·v₅ = [0, 1.6, 1.2, 0] khỏi x của "cabinet". Các layer sau đọc x mới này, nên khả năng đoán "are" giảm.</div>
+    <p class="note">Bảng hướng v dùng trong ví dụ: v₁ = [1, 0, 0, 0], v₂ = [0, 1, 0, 0], v₃ = [0, 0, 1, 0], v₄ = [0, 0, 0, 1], v₅ = [0, 0.8, 0.6, 0], v₆ = [0.6, 0, 0, 0.8]. Bias decoder b lấy bằng 0.</p>
+  </div>
+
+  <!-- 6 -->
+  <div class="step">
+    <h2>6. Node = một ô; gộp hai câu cùng khuôn</h2>
+    <p>Một node được xác định bởi 3 thứ: <b>feature nào</b> (f₅), <b>chỗ đọc nào</b> (resid layer 2), <b>token vị trí nào</b> (4). Hai câu cùng khuôn có cùng vai trò ở cùng vị trí:</p>
+    <div class="scroll"><table>
+      <tr><th class="l">Vị trí</th><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th></tr>
+      <tr><td class="l">Câu 1</td><td>The</td><td>keys</td><td>near</td><td>the</td><td>cabinet</td></tr>
+      <tr><td class="l">Câu 2</td><td>The</td><td>dogs</td><td>near</td><td>the</td><td>house</td></tr>
+      <tr><td class="l">Vai trò</td><td>mạo từ</td><td>chủ ngữ</td><td>giới từ</td><td>mạo từ</td><td>danh từ nhiễu, token cuối</td></tr>
+    </table></div>
+    <table>
+      <tr><th class="l">Node</th><th>Câu 1</th><th>Câu 2</th><th>Trung bình</th></tr>
+      <tr><td class="l">f₂ tại vị trí 1</td><td class="n">3</td><td class="n">2.6</td><td class="n">2.8</td></tr>
+      <tr><td class="l">f₅ tại vị trí 4</td><td class="n">2</td><td class="n">1.6</td><td class="n">1.8</td></tr>
+    </table>
+    <div class="explain ok">Trung bình được lấy theo <b>từng ô</b>: f₅ ở vị trí 4 của câu 1 cộng với f₅ ở vị trí 4 của câu 2. Gộp như vậy có nghĩa vì vị trí 4 ở cả hai câu đều là token cuối, nơi model đoán động từ. (Trong paper con số được gộp là tác động của node lên output, cách gộp giống hệt.)</div>
+  </div>
+</section>
+</main>
+
+<script>
+const T=['The','keys','near','the','cabinet'];
+const FN=['danh từ số ít','danh từ số nhiều','giới từ','mạo từ "the"','chủ ngữ số nhiều (đọc từ token trước)','đầu câu'];
+const V=[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1],[0,0.8,0.6,0],[0.6,0,0,0.8]];
+// f per token (6 features)
+const F=[[0,0,0,2,0,1],[0,3,0,0,0,0],[0,0,2,0,0,0],[0,0,0,2,0,0],[2.5,0,0,0,2,0]];
+const E=[[0,0.1,0,0],[0.1,0,0,0.1],[0,0,0.1,0],[0,0.1,0,0],[0,0,0,0.1]];
+const r=n=>Math.round(n*100)/100;
+function xhat(t){return [0,1,2,3].map(d=>r(F[t].reduce((s,f,i)=>s+f*V[i][d],0)))}
+function xof(t){return xhat(t).map((v,d)=>r(v+E[t][d]))}
+const vs=a=>'['+a.join(', ')+']';
+const sub=i=>'₁₂₃₄₅₆'[i];
+
+// step 1
+document.getElementById('toks1').innerHTML=T.map((t,i)=>`<div class="tok${i===4?' sel':''}"><div class="p">vị trí ${i}</div><b>${t}</b></div>`).join('')+'<div class="tok blank"><div class="p">không phải token</div><b>___</b></div>';
+
+// step 2 grid
+(function(){
+  const s=document.getElementById('grid'),NS='http://www.w3.org/2000/svg';
+  const el=(t,a,txt)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!==undefined)e.textContent=txt;s.appendChild(e);return e};
+  const rows=['embedding','resid layer 0','resid layer 1','resid layer 2'];
+  const X0=170,DX=140,Y0=40,DY=62;
+  T.forEach((t,c)=>el('text',{x:X0+c*DX+50,y:24,'text-anchor':'middle','font-size':14,'font-weight':700},t));
+  rows.forEach((n,rI)=>{
+    const y=Y0+rI*DY;
+    el('text',{x:10,y:y+27,'font-size':13,fill:'#6b6b70'},n);
+    T.forEach((t,c)=>{
+      const sel=rI===3&&c===4;
+      el('rect',{x:X0+c*DX,y,width:100,height:40,rx:8,fill:sel?'#fdecea':'#fff',stroke:sel?'#c0392b':'#1d1d1f','stroke-width':sel?3:1.3});
+      el('text',{x:X0+c*DX+50,y:y+25,'text-anchor':'middle','font-size':12,'font-family':'JetBrains Mono,monospace',fill:'#6b6b70'},'x (4 số)');
+      if(rI<3)el('line',{x1:X0+c*DX+50,y1:y+40,x2:X0+c*DX+50,y2:y+DY,stroke:'#9a9a9a','stroke-width':1.3});
+    });
+  });
+  const y2=Y0+2*DY+40,y3=Y0+3*DY;
+  el('path',{d:`M${X0+DX+50},${y2} C${X0+DX+120},${y3-5} ${X0+4*DX-60},${y3-25} ${X0+4*DX+20},${y3}`,fill:'none',stroke:'#c0392b','stroke-width':2.5});
+  el('text',{x:X0+2.5*DX,y:y3-4,'text-anchor':'middle','font-size':12,fill:'#c0392b','font-weight':600},'attention: "cabinet" đọc "keys"');
+})();
+
+// pickers
+function picker(id,fn,def){
+  const p=document.getElementById(id);
+  T.forEach((t,i)=>{const b=document.createElement('button');b.textContent=`${i}: ${t}`;b.onclick=()=>{[...p.children].forEach(c=>c.classList.remove('on'));b.classList.add('on');fn(i)};p.appendChild(b)});
+  p.children[def].click();
+}
+picker('pick3',t=>{
+  document.getElementById('t3').textContent=`"${T[t]}" (vị trí ${t})`;
+  document.getElementById('x3').textContent='x = '+vs(xof(t));
+  document.getElementById('bars3').innerHTML=F[t].map((f,i)=>`<span class="mono">f${sub(i)}</span><div><div class="bar${f?'':' zero'}" style="width:${f/3*100}%"></div></div><span><b class="mono">${f}</b> <span class="note">${FN[i]}</span></span>`).join('');
+  const on=F[t].map((f,i)=>f?`f${sub(i)} = ${f} (${FN[i]})`:null).filter(Boolean);
+  document.getElementById('exp3').innerHTML=`Với x của "${T[t]}", chỉ ${on.length} hệ số khác 0: ${on.join(', ')}. Các hệ số còn lại bằng đúng 0. Mỗi f mô tả <b>vector của token này</b>, không mô tả cả câu.`;
+},4);
+
+// step 4 table
+document.getElementById('tbl4').innerHTML=`<table><tr><th class="l">feature \\ token</th>${T.map((t,i)=>`<th>${i}: ${t}</th>`).join('')}</tr>`+
+ FN.map((n,i)=>`<tr><td class="l"><span class="mono">f${sub(i)}</span> ${n}</td>${T.map((_,t)=>{const f=F[t][i];const cls=f===0?'z':(i===4&&t===4?'cross pick':'hit');return `<td class="n ${cls}">${f}</td>`}).join('')}</tr>`).join('')+'</table>';
+
+// step 5
+picker('pick5',t=>{
+  const rows=F[t].map((f,i)=>f?`<tr><td class="l mono">f${sub(i)}·v${sub(i)}</td><td class="n">${f} × ${vs(V[i])}</td><td class="n">${vs(V[i].map(v=>r(f*v)))}</td></tr>`:'').join('');
+  document.getElementById('tbl5').innerHTML=`<table><tr><th class="l">Thành phần</th><th>Phép tính</th><th>Vector</th></tr>${rows}
+  <tr><td class="l mono">x̂ (tổng trên)</td><td></td><td class="n">${vs(xhat(t))}</td></tr>
+  <tr><td class="l mono">ε (SAE error)</td><td></td><td class="n">${vs(E[t])}</td></tr>
+  <tr><td class="l"><b>x = x̂ + ε</b></td><td></td><td class="n"><b>${vs(xof(t))}</b></td></tr></table>`;
+},4);
+
+// stepper
+const steps=[...document.querySelectorAll('.step')],pipe=document.getElementById('pipe');let cur=0;
+steps.forEach((s,i)=>{const sp=document.createElement('span');sp.textContent=s.querySelector('h2').textContent.replace(/^\d+\.\s*/,'');sp.onclick=()=>show(i);pipe.appendChild(sp)});
+function show(i){cur=i;steps.forEach((s,j)=>s.classList.toggle('on',j===i));[...pipe.children].forEach((c,j)=>c.classList.toggle('on',j===i));document.getElementById('prev').disabled=i===0;document.getElementById('next').disabled=i===steps.length-1}
+document.getElementById('prev').onclick=()=>cur>0&&show(cur-1);
+document.getElementById('next').onclick=()=>cur<steps.length-1&&show(cur+1);
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'&&cur<steps.length-1)show(cur+1);if(e.key==='ArrowLeft'&&cur>0)show(cur-1)});
+show(0);
+</script>
+</body>
+</html>

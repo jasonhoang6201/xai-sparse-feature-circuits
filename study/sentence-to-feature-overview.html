@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Câu đến feature: tổng thể</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f7f6f2;color:#1d1d1f;font-family:"Be Vietnam Pro",sans-serif}
+main{max-width:1240px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:22px;margin:0 0 4px}
+.sub{color:#6b6b70;margin:0 0 12px;font-size:14px}
+.card{background:#fff;border:1px solid #dcdad3;border-radius:12px;padding:12px;overflow-x:auto}
+svg text{font-family:"Be Vietnam Pro",sans-serif}
+</style>
+</head>
+<body>
+<main>
+<h1>Từ câu → token → x → SAE → f (node) → x → output</h1>
+<p class="sub">Ví dụ đơn giản, đã giảm chiều cho dễ hiểu: x có 4 số (Pythia-70M: 512), SAE có 6 feature (Pythia: 32 768). Tên feature và con số là minh họa. Chi tiết từng bước: <code>sentence-to-feature.html</code>.</p>
+<div class="card"><svg id="g" width="1200" height="760" viewBox="0 0 1200 760"></svg></div>
+</main>
+<script>
+const s=document.getElementById('g'),NS='http://www.w3.org/2000/svg';
+function el(t,a,txt){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!==undefined)e.textContent=txt;s.appendChild(e);return e}
+const C={ink:'#1d1d1f',mute:'#6b6b70',line:'#dcdad3',hi:'#c0392b',hibg:'#fdecea',blu:'#2464a8',blubg:'#e8f0fa',org:'#b9770e',orgbg:'#fdf2e0',grn:'#1e8449',grnbg:'#e8f6ee'};
+const defs=el('defs',{});
+[['k',C.mute],['r',C.hi]].forEach(([k,c])=>{const m=document.createElementNS(NS,'marker');[['id','a'+k],['viewBox','0 0 10 10'],['refX',9],['refY',5],['markerWidth',7],['markerHeight',7],['orient','auto']].forEach(([a,v])=>m.setAttribute(a,v));const p=document.createElementNS(NS,'path');p.setAttribute('d','M0,0 L10,5 L0,10 z');p.setAttribute('fill',c);m.appendChild(p);defs.appendChild(m)});
+const arr=(d,c,w)=>el('path',{d,fill:'none',stroke:c||C.mute,'stroke-width':w||1.6,'marker-end':`url(#a${c===C.hi?'r':'k'})`});
+const num=(n,x,y,t)=>{el('circle',{cx:x,cy:y,r:12,fill:C.ink});el('text',{x,y:y+5,'text-anchor':'middle','font-size':13,'font-weight':700,fill:'#fff'},n);if(t)el('text',{x:x+20,y:y+5,'font-size':14,'font-weight':700},t)};
+
+const T=['The','keys','near','the','cabinet'];
+const X0=150,DX=104,BW=84;
+
+// ① sentence
+num(1,20,28,'Câu');
+el('text',{x:90,y:33,'font-size':16,'font-family':'JetBrains Mono,monospace'},'"The keys near the cabinet ___"   → model cần đoán "are"');
+
+// ② tokens
+num(2,20,82,'Token');
+T.forEach((t,i)=>{const x=X0+i*DX;
+  el('rect',{x,y:66,width:BW,height:34,rx:8,fill:i===4?C.hibg:'#fff',stroke:i===4?C.hi:C.ink,'stroke-width':1.5});
+  el('text',{x:x+BW/2,y:88,'text-anchor':'middle','font-size':14,'font-weight':700},t);
+  el('text',{x:x+BW/2,y:60,'text-anchor':'middle','font-size':11,fill:C.mute},'vị trí '+i);
+});
+el('rect',{x:X0+5*DX,y:66,width:BW,height:34,rx:8,fill:'#fff',stroke:C.mute,'stroke-dasharray':'4 3'});
+el('text',{x:X0+5*DX+BW/2,y:88,'text-anchor':'middle','font-size':14,fill:C.mute},'___');
+el('text',{x:X0+5*DX+BW/2,y:118,'text-anchor':'middle','font-size':11,fill:C.mute},'không phải token');
+
+// ③ grid of x
+num(3,20,150,'Mỗi token');
+el('text',{x:40,y:170,'font-size':14,'font-weight':700},'1 vector x');
+el('text',{x:40,y:188,'font-size':14,'font-weight':700},'ở mỗi layer');
+const rows=['embedding','layer 0','layer 1','layer 2'];
+const GY=140,GDY=56;
+rows.forEach((r,ri)=>{
+  const y=GY+ri*GDY;
+  el('text',{x:X0+5*DX+10,y:y+22,'font-size':12,fill:C.mute},'← '+r+(ri?' (resid)':''));
+  T.forEach((t,c)=>{const x=X0+c*DX;const sel=ri===3&&c===4;
+    el('rect',{x,y,width:BW,height:34,rx:6,fill:sel?C.hibg:'#fff',stroke:sel?C.hi:C.ink,'stroke-width':sel?3:1.2});
+    el('text',{x:x+BW/2,y:y+22,'text-anchor':'middle','font-size':12,'font-family':'JetBrains Mono,monospace',fill:sel?C.hi:C.mute},sel?'x':'x');
+  });
+});
+T.forEach((t,c)=>{const x=X0+c*DX+BW/2;arr(`M${x},100 V${GY-2}`);for(let ri=0;ri<3;ri++)arr(`M${x},${GY+ri*GDY+34} V${GY+(ri+1)*GDY-2}`)});
+// attention arrow
+const ay1=GY+2*GDY+34,ay2=GY+3*GDY+10;
+arr(`M${X0+DX+BW/2+10},${ay1} C${X0+2*DX},${ay2+30} ${X0+3.5*DX},${ay2+30} ${X0+4*DX-2},${ay2+18}`,C.hi,2.4);
+el('text',{x:X0+2.5*DX,y:ay2+48,'text-anchor':'middle','font-size':12,fill:C.hi,'font-weight':600},'attention: "cabinet" đọc "keys"');
+
+// ④ SAE zoom
+const ZX=830,ZY=130;
+num(4,ZX,ZY-10,'SAE trên x của "cabinet" (resid layer 2)');
+el('rect',{x:ZX-10,y:ZY+6,width:370,height:430,rx:12,fill:'#fbfaf7',stroke:C.hi,'stroke-width':1.5,'stroke-dasharray':'6 4'});
+arr(`M${X0+4*DX+BW},${GY+3*GDY+17} C${ZX-60},${GY+3*GDY+17} ${ZX-60},${ZY+40} ${ZX+8},${ZY+40}`,C.hi,2);
+el('rect',{x:ZX+10,y:ZY+22,width:330,height:36,rx:8,fill:'#fff',stroke:C.ink,'stroke-width':1.5});
+el('text',{x:ZX+175,y:ZY+46,'text-anchor':'middle','font-size':14,'font-family':'JetBrains Mono,monospace','font-weight':600},'x = [2.5, 1.6, 1.2, 0.1]');
+arr(`M${ZX+175},${ZY+58} V${ZY+76}`);
+el('rect',{x:ZX+120,y:ZY+78,width:110,height:30,rx:8,fill:'#f1efe9',stroke:C.ink});
+el('text',{x:ZX+175,y:ZY+98,'text-anchor':'middle','font-size':13,'font-weight':600},'encoder');
+arr(`M${ZX+175},${ZY+108} V${ZY+124}`);
+const FN=[['f₁','2.5','danh từ số ít'],['f₂','0','danh từ số nhiều'],['f₃','0','giới từ'],['f₄','0','mạo từ "the"'],['f₅','2','chủ ngữ số nhiều'],['f₆','0','đầu câu']];
+el('rect',{x:ZX+10,y:ZY+126,width:330,height:176,rx:8,fill:C.blubg,stroke:C.blu,'stroke-width':1.5});
+el('text',{x:ZX+22,y:ZY+144,'font-size':12,'font-weight':700,fill:C.blu},'node: mỗi f là 1 node (1 số)');
+FN.forEach(([k,v,n],i)=>{const y=ZY+166+i*22;const on=v!=='0';
+  el('circle',{cx:ZX+34,cy:y-4,r:8,fill:on?C.blu:'#fff',stroke:C.blu});
+  el('text',{x:ZX+50,y,'font-size':13,'font-family':'JetBrains Mono,monospace','font-weight':on?700:400},`${k} = ${v}`);
+  el('text',{x:ZX+130,y,'font-size':12,fill:on?C.ink:C.mute},n);
+});
+arr(`M${ZX+175},${ZY+302} V${ZY+318}`);
+el('rect',{x:ZX+120,y:ZY+320,width:110,height:30,rx:8,fill:'#f1efe9',stroke:C.ink});
+el('text',{x:ZX+175,y:ZY+340,'text-anchor':'middle','font-size':13,'font-weight':600},'decoder');
+arr(`M${ZX+175},${ZY+350} V${ZY+366}`);
+el('text',{x:ZX+175,y:ZY+384,'text-anchor':'middle','font-size':13,'font-family':'JetBrains Mono,monospace'},'x̂ = 2.5·v₁ + 2·v₅ = [2.5, 1.6, 1.2, 0]');
+el('rect',{x:ZX+30,y:ZY+394,width:290,height:28,rx:6,fill:C.orgbg,stroke:C.org,'stroke-width':1.5});
+el('text',{x:ZX+175,y:ZY+413,'text-anchor':'middle','font-size':13,'font-family':'JetBrains Mono,monospace'},'+ ε = [0, 0, 0, 0.1]   (cũng là 1 node)');
+
+// ⑤ back into model → output
+const OY=ZY+470;
+arr(`M${ZX+175},${ZY+436} V${OY-4}`,C.hi,2);
+num(5,ZX,OY+18);
+el('rect',{x:ZX+20,y:OY,width:340,height:56,rx:10,fill:C.grnbg,stroke:C.grn,'stroke-width':1.5});
+el('text',{x:ZX+190,y:OY+22,'text-anchor':'middle','font-size':13,'font-weight':600},'x = x̂ + ε = [2.5, 1.6, 1.2, 0.1] đi tiếp');
+el('text',{x:ZX+190,y:OY+42,'text-anchor':'middle','font-size':12},'layer 3 … layer 5 → unembedding → softmax');
+arr(`M${ZX+190},${OY+56} V${OY+76}`);
+el('rect',{x:ZX+20,y:OY+78,width:340,height:36,rx:10,fill:'#fff',stroke:C.ink,'stroke-width':1.5});
+el('text',{x:ZX+190,y:OY+101,'text-anchor':'middle','font-size':13,'font-family':'JetBrains Mono,monospace','font-weight':600},'m = log P(is) − log P(are)');
+
+// ⑥ node table for the whole sentence
+const TY=420;
+num(6,20,TY,'Bảng node tại resid layer 2: SAE chạy riêng trên x của từng token');
+const F=[[0,0,0,2,0,1],[0,3,0,0,0,0],[0,0,2,0,0,0],[0,0,0,2,0,0],[2.5,0,0,0,2,0]];
+const TX=X0,RH=30;
+T.forEach((t,c)=>el('text',{x:TX+c*DX+BW/2,y:TY+40,'text-anchor':'middle','font-size':13,'font-weight':700},t));
+FN.forEach(([k,,n],i)=>{const y=TY+52+i*RH;
+  el('text',{x:24,y:y+19,'font-size':12,'font-family':'JetBrains Mono,monospace'},k);
+  el('text',{x:48,y:y+19,'font-size':11,fill:C.mute},n.length>14?n.slice(0,14)+'…':n);
+  T.forEach((t,c)=>{const v=F[c][i];const x=TX+c*DX;const pick=c===4;
+    el('rect',{x,y,width:BW,height:RH-4,rx:4,fill:v?(i===4&&c===4?C.orgbg:C.blubg):'#fff',stroke:pick?C.hi:C.line,'stroke-width':pick?2:1});
+    el('text',{x:x+BW/2,y:y+18,'text-anchor':'middle','font-size':13,'font-family':'JetBrains Mono,monospace','font-weight':v?700:400,fill:v?C.ink:'#bbb'},v);
+  });
+});
+el('text',{x:24,y:TY+52+6*RH+20,'font-size':12,fill:C.mute},'Mỗi ô = 1 node (feature + chỗ đọc + vị trí token). Cột viền đỏ là cột vừa phóng to ở ④.');
+el('text',{x:24,y:TY+52+6*RH+38,'font-size':12,fill:C.mute},'f₅ = 2 ở "cabinet" (ô cam): thông tin "chủ ngữ số nhiều" attention chép từ "keys" sang ở ③.');
+</script>
+</body>
+</html>
