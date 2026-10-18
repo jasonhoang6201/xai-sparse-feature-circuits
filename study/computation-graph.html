@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Computation graph có SAE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f7f6f2;--card:#fff;--ink:#1d1d1f;--mute:#6b6b70;--line:#dcdad3;--hi:#c0392b;--hibg:#fdecea;--grn:#1e8449;--grnbg:#e8f6ee;--blu:#2464a8;--blubg:#e8f0fa;--org:#b9770e;--orgbg:#fdf2e0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Be Vietnam Pro",sans-serif;line-height:1.55}
+main{max-width:1150px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:24px;margin:0 0 4px}
+h2{font-size:19px;margin:0 0 10px}
+.sub{color:var(--mute);margin:0 0 16px}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px}
+code,.mono{font-family:"JetBrains Mono",monospace;font-size:14px}
+.explain{border-left:4px solid var(--hi);background:var(--hibg);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0}
+.ok{border-left-color:var(--grn);background:var(--grnbg)}
+.note{color:var(--mute);font-size:14px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:760px){.cols{grid-template-columns:1fr}}
+.box{border:2px solid var(--ink);border-radius:10px;padding:10px 12px;background:#fff}
+.box.red{border-color:var(--hi);background:var(--hibg)}
+.box.grn{border-color:var(--grn);background:var(--grnbg)}
+.scroll{overflow-x:auto}
+svg text{font-family:"Be Vietnam Pro",sans-serif}
+svg .mono{font-family:"JetBrains Mono",monospace}
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px}
+.ctrl button{font:inherit;font-size:14px;padding:6px 12px;border-radius:8px;border:2px solid var(--ink);background:#fff;cursor:pointer}
+.ctrl button.on{background:var(--ink);color:#fff}
+table{border-collapse:collapse;margin:10px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:6px 10px;text-align:left}
+th{background:#f1efe9}
+</style>
+</head>
+<body>
+<main>
+<h1>Computation graph có SAE: node nằm ở đâu, edge nối cái gì</h1>
+<p class="sub">Model thu nhỏ, đã giảm chiều cho dễ hiểu: 2 layer (Pythia-70M: 6), 2 token, mỗi SAE vẽ 3 feature + 1 ε (Pythia: 32 768 feature + 1 ε). Layer vẽ theo dạng tuần tự Attn → MLP như đã học. Paper §3.1, App. A.1, A.3.</p>
+
+<section>
+  <h2>1. Trước và sau khi viết lại x</h2>
+  <div class="cols">
+    <div class="box">
+      <b>Trước: SAE chỉ đọc ra, model không dùng</b>
+      <p class="mono">x → layer sau<br>x → SAE encoder → f (ghi ra ngoài)</p>
+      <p>Layer sau nhận <code>x</code> (activation) trực tiếp. <code>fᵢ</code> (feature activation) chỉ là con số tính bên cạnh. Sửa <code>fᵢ</code> thì layer sau không thấy gì, <code>m</code> (metric) không đổi, và ∂m/∂fᵢ không tồn tại vì <code>m</code> không phụ thuộc vào <code>fᵢ</code>.</p>
+    </div>
+    <div class="box grn">
+      <b>Sau: x được tính lại từ f và ε</b>
+      <p class="mono">x → encoder → f, ε = x − x̂<br>x ← Σ fᵢ·vᵢ + b + ε → layer sau</p>
+      <p>Giá trị <code>x</code> giống hệt cũ (đẳng thức đúng tuyệt đối). Nhưng giờ layer sau đọc <code>x</code> được <b>tính từ</b> <code>fᵢ</code> và <code>ε</code>. Sửa <code>fᵢ</code> → <code>x</code> đổi → layer sau đổi → <code>m</code> đổi. PyTorch autograd tính được ∂m/∂fᵢ và ∂m/∂ε.</p>
+    </div>
+  </div>
+  <div class="explain">Ví dụ 2 chiều: <code>v₁</code> (feature 1) = [1, 0], <code>f₁</code> = 2, <code>ε</code> = [0.1, 0.3], b = 0. x = 2·[1,0] + [0.1,0.3] = [2.1, 0.3], đúng bằng x thật. Patch f₁ = 0 → x = [0.1, 0.3], layer sau nhận vector này. Gradient: ∂x/∂f₁ = v₁ = [1, 0], nên ∂m/∂f₁ = (∂m/∂x)·v₁ (App. A.3).</div>
+  <p class="note">Chi tiết kỹ thuật trong App. A.3: paper đặt stop-gradient lên ε. Nếu không, x = x̂ + (x − x̂) làm gradient theo fᵢ triệt tiêu về 0.</p>
+</section>
+
+<section>
+  <h2>2. Ba chỗ có SAE trong một layer (1 token)</h2>
+  <div class="scroll"><svg width="1000" height="190" viewBox="0 0 1000 190">
+    <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6b6b70"/></marker></defs>
+    <g font-size="13" text-anchor="middle">
+      <rect x="10" y="100" width="120" height="44" rx="8" fill="#fff" stroke="#1d1d1f" stroke-width="1.5"/>
+      <text x="70" y="120" font-weight="600">x vào</text><text x="70" y="137" font-size="11" fill="#6b6b70">resid layer trước</text>
+      <rect x="165" y="100" width="70" height="44" rx="8" fill="#f1efe9" stroke="#1d1d1f" stroke-width="1.5"/>
+      <text x="200" y="127" font-weight="600">Attn</text>
+      <rect x="270" y="96" width="86" height="52" rx="8" fill="#fdecea" stroke="#c0392b" stroke-width="2" stroke-dasharray="5 3"/>
+      <text x="313" y="118" font-weight="700" fill="#c0392b">SAE ①</text><text x="313" y="135" font-size="11">attn out</text>
+      <circle cx="395" cy="122" r="14" fill="#fff" stroke="#1d1d1f" stroke-width="1.5"/><text x="395" y="127" font-size="16">+</text>
+      <rect x="440" y="100" width="70" height="44" rx="8" fill="#f1efe9" stroke="#1d1d1f" stroke-width="1.5"/>
+      <text x="475" y="127" font-weight="600">MLP</text>
+      <rect x="545" y="96" width="86" height="52" rx="8" fill="#fdecea" stroke="#c0392b" stroke-width="2" stroke-dasharray="5 3"/>
+      <text x="588" y="118" font-weight="700" fill="#c0392b">SAE ②</text><text x="588" y="135" font-size="11">MLP out</text>
+      <circle cx="670" cy="122" r="14" fill="#fff" stroke="#1d1d1f" stroke-width="1.5"/><text x="670" y="127" font-size="16">+</text>
+      <rect x="715" y="96" width="86" height="52" rx="8" fill="#fdecea" stroke="#c0392b" stroke-width="2" stroke-dasharray="5 3"/>
+      <text x="758" y="118" font-weight="700" fill="#c0392b">SAE ③</text><text x="758" y="135" font-size="11">resid</text>
+      <rect x="840" y="100" width="140" height="44" rx="8" fill="#fff" stroke="#1d1d1f" stroke-width="1.5"/>
+      <text x="910" y="127" font-weight="600">→ layer tiếp theo</text>
+    </g>
+    <g stroke="#6b6b70" stroke-width="1.6" fill="none" marker-end="url(#ar)">
+      <path d="M130,122 H163"/><path d="M235,122 H268"/><path d="M356,122 H379"/>
+      <path d="M409,122 H438"/><path d="M510,122 H543"/><path d="M631,122 H654"/>
+      <path d="M684,122 H713"/><path d="M801,122 H838"/>
+      <path d="M70,100 C70,40 395,40 395,106"/>
+      <path d="M402,110 C430,40 670,40 670,106"/>
+    </g>
+    <text x="230" y="38" font-size="12" fill="#6b6b70">residual connection: x đi thẳng tới phép cộng</text>
+    <text x="440" y="38" font-size="12" fill="#6b6b70">x + Attn đi thẳng tới phép cộng thứ 2</text>
+    <text x="10" y="180" font-size="12" fill="#6b6b70">Mỗi ô đỏ là một chỗ SAE đọc vector đi qua và tách nó thành node. Model gốc không có các ô này; paper chèn SAE vào đúng 3 chỗ đó.</text>
+  </svg></div>
+</section>
+
+<section>
+  <h2>3. Bên trong một ô SAE: node nằm ở đâu</h2>
+  <div class="scroll"><svg width="1000" height="330" viewBox="0 0 1000 330">
+    <defs><marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6b6b70"/></marker></defs>
+    <rect x="262" y="22" width="430" height="296" rx="12" fill="none" stroke="#1e8449" stroke-width="2" stroke-dasharray="6 4"/>
+    <text x="477" y="314" text-anchor="middle" font-size="12" fill="#1e8449" font-weight="700">node tại ô này: f₁, f₂, …, f_N và ε  (Pythia: 32 768 + 1)</text>
+    <g font-size="13" text-anchor="middle">
+      <rect x="10" y="112" width="130" height="56" rx="8" fill="#fff" stroke="#1d1d1f" stroke-width="1.5"/>
+      <text x="75" y="134" font-weight="600" class="mono">x = [2.1, 0.3]</text><text x="75" y="153" font-size="11" fill="#6b6b70">vector model tính ra</text>
+      <rect x="170" y="116" width="76" height="48" rx="8" fill="#f1efe9" stroke="#1d1d1f" stroke-width="1.5"/>
+      <text x="208" y="145" font-weight="600">encoder</text>
+      <circle cx="300" cy="60" r="16" fill="#e8f0fa" stroke="#2464a8" stroke-width="2"/><text x="300" y="65" class="mono" font-size="12">2</text><text x="338" y="65" font-size="12" class="mono">f₁</text>
+      <circle cx="300" cy="110" r="16" fill="#e8f0fa" stroke="#2464a8" stroke-width="2"/><text x="300" y="115" class="mono" font-size="12">0</text><text x="338" y="115" font-size="12" class="mono">f₂</text>
+      <circle cx="300" cy="160" r="16" fill="#e8f0fa" stroke="#2464a8" stroke-width="2"/><text x="300" y="165" class="mono" font-size="12">0</text><text x="338" y="165" font-size="12" class="mono">f₃</text>
+      <text x="300" y="200" font-size="16" fill="#6b6b70">⋮</text>
+      <rect x="380" y="86" width="76" height="48" rx="8" fill="#f1efe9" stroke="#1d1d1f" stroke-width="1.5"/>
+      <text x="418" y="115" font-weight="600">decoder</text>
+      <rect x="490" y="86" width="120" height="48" rx="8" fill="#fff" stroke="#9a9a9a" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <text x="550" y="107" class="mono" fill="#6b6b70">x̂ = [2, 0]</text><text x="550" y="124" font-size="11" fill="#6b6b70">không phải node</text>
+      <rect x="490" y="226" width="140" height="56" rx="6" fill="#fdf2e0" stroke="#b9770e" stroke-width="2"/>
+      <text x="560" y="248" class="mono" font-weight="600">ε = x − x̂</text><text x="560" y="267" class="mono" font-size="12">= [0.1, 0.3]</text>
+      <circle cx="740" cy="160" r="14" fill="#fff" stroke="#1d1d1f" stroke-width="1.5"/><text x="740" y="165" font-size="16">+</text>
+      <rect x="780" y="132" width="200" height="56" rx="8" fill="#fff" stroke="#1d1d1f" stroke-width="1.5"/>
+      <text x="880" y="154" font-weight="600" class="mono">x = [2.1, 0.3]</text><text x="880" y="173" font-size="11" fill="#6b6b70">→ đi tiếp vào model</text>
+    </g>
+    <g stroke="#6b6b70" stroke-width="1.6" fill="none" marker-end="url(#ar2)">
+      <path d="M140,140 H168"/>
+      <path d="M246,135 L282,64"/><path d="M246,138 L282,112"/><path d="M246,142 L282,158"/>
+      <path d="M318,60 L378,104"/><path d="M318,110 L378,110"/><path d="M318,160 L378,118"/>
+      <path d="M456,110 H488"/>
+      <path d="M75,168 C75,254 300,254 488,254"/>
+      <path d="M550,134 V224"/>
+      <path d="M610,110 C690,110 740,120 740,144"/>
+      <path d="M630,254 C700,254 740,210 740,176"/>
+      <path d="M754,160 H778"/>
+    </g>
+    <text x="150" y="272" font-size="12" fill="#6b6b70">x đi thẳng xuống để tính ε</text>
+    <text x="560" y="180" font-size="12" fill="#6b6b70" text-anchor="middle">trừ đi x̂</text>
+  </svg></div>
+  <div class="explain">Ví dụ dùng v₁ = [1, 0] (cột 1 của decoder) và b = 0, nên decoder ra x̂ = 2·[1, 0] = [2, 0]. Mỗi chấm xanh là 1 node (1 số). Ô cam ε là 1 node (1 vector). x̂ chỉ là tổng của các feature (f₁·v₁ + f₂·v₂ + …), nên x̂ không phải node riêng: tác động của x̂ đã được chia ra cho từng fᵢ.</div>
+  <p class="note">Trong mạng ở phần 4, mỗi hộp nhỏ chính là một ô SAE như hình này, chỉ vẽ gọn còn f₁, f₂, f₃ và ε.</p>
+</section>
+
+<section>
+  <h2>4. Node trong mạng: mỗi chấm là một node</h2>
+  <div class="ctrl">
+    <button data-m="none" class="on">Chỉ node</button>
+    <button data-m="same">Edge cùng token</button>
+    <button data-m="cross">Edge qua attention (khác token)</button>
+  </div>
+  <div class="scroll"><svg id="g" width="1080" height="560" viewBox="0 0 1080 560"></svg></div>
+  <p class="note">Chấm xanh dương = feature activation <code>fᵢ</code> (1 số). Chấm cam vuông = SAE error <code>ε</code> (1 vector 512 số, nhưng tính là 1 node). Mỗi hộp = 1 SAE tại 1 token. Hộp xám = embedding (Pythia có SAE ở embedding, Gemma không).</p>
+</section>
+
+<section>
+  <h2>5. Edge là gì (App. A.1)</h2>
+  <p>Edge nối node phía trước <code>u</code> với node phía sau <code>d</code>. Trọng số của edge = effect lên <code>m</code> khi patch <code>u</code>, nhưng <b>chỉ phần đi thẳng qua d</b>: mọi node trung gian giữa u và d bị giữ ở giá trị clean.</p>
+  <div class="explain">Ví dụ: u = feature ở resid layer 0, d = feature ở resid layer 1. u ảnh hưởng d theo 3 đường: thẳng qua residual connection, qua Attn₁, qua MLP₁. Edge u → d resid₁ chỉ đo đường <b>thẳng</b>; hai đường qua Attn₁, MLP₁ là các edge u → attn₁, u → mlp₁ riêng.</div>
+  <p class="mono">IE(edge) ≈ ∇_d m · ∇_u d · (u_patch − u_clean)   (Eq. 5)</p>
+  <p class="note">∇_d m (gradient của m theo d) · ∇_u d (gradient của d theo u, các node trung gian coi là hằng số) · (u_patch − u_clean) (mức thay đổi của u). Đây là AtP áp dụng cho 2 node nối tiếp.</p>
+  <table>
+    <tr><th>Edge</th><th>Lý do có edge</th></tr>
+    <tr><td>resid ℓ−1 → attn ℓ, mlp ℓ, resid ℓ</td><td>attn ℓ và mlp ℓ đọc residual stream; resid ℓ = resid ℓ−1 + attn + mlp</td></tr>
+    <tr><td>attn ℓ → mlp ℓ, resid ℓ</td><td>attn output được cộng vào x trước khi MLP đọc</td></tr>
+    <tr><td>mlp ℓ → resid ℓ</td><td>mlp output được cộng vào cuối layer</td></tr>
+    <tr><td>resid ℓ−1 token trước → attn ℓ token sau</td><td>attention là bước duy nhất đọc token khác (chỉ token trước)</td></tr>
+  </table>
+  <p class="note">Bảng này suy ra từ cấu trúc layer; phần text paper không liệt kê từng loại edge.</p>
+</section>
+</main>
+
+<script>
+const svg=document.getElementById('g');
+const NS='http://www.w3.org/2000/svg';
+const C={ink:'#1d1d1f',mute:'#6b6b70',line:'#dcdad3',blu:'#2464a8',blubg:'#e8f0fa',org:'#b9770e',orgbg:'#fdf2e0',grn:'#1e8449',hi:'#c0392b'};
+function el(t,a,txt){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!==undefined)e.textContent=txt;svg.appendChild(e);return e}
+
+// columns = spots, rows = tokens
+const spots=[{k:'emb',n:'embedding'},{k:'a0',n:'Attn₀ out'},{k:'m0',n:'MLP₀ out'},{k:'r0',n:'resid₀'},{k:'a1',n:'Attn₁ out'},{k:'m1',n:'MLP₁ out'},{k:'r1',n:'resid₁'}];
+const toks=['"The"','"keys"'];
+const X0=110,DX=140,Y0=90,DY=230,BW=104,BH=150;
+const pos={};
+// layer bands
+el('rect',{x:X0+DX-14,y:30,width:3*DX-12,height:520,rx:10,fill:'#f4f2ec'});
+el('text',{x:X0+DX+3*DX/2-20,y:50,'text-anchor':'middle','font-size':14,'font-weight':700,fill:C.mute},'Layer 0');
+el('rect',{x:X0+4*DX-14,y:30,width:3*DX-12,height:520,rx:10,fill:'#f4f2ec'});
+el('text',{x:X0+4*DX+3*DX/2-20,y:50,'text-anchor':'middle','font-size':14,'font-weight':700,fill:C.mute},'Layer 1');
+el('text',{x:X0+7*DX+10,y:Y0+BH/2+DY/2,'font-size':13,fill:C.mute},'→ unembedding → m');
+
+const edgeLayer=document.createElementNS(NS,'g');svg.appendChild(edgeLayer);
+
+toks.forEach((t,r)=>{
+  const y=Y0+r*DY;
+  el('text',{x:20,y:y+BH/2+5,'font-size':15,'font-weight':700},'token '+(r+1));
+  el('text',{x:20,y:y+BH/2+24,'font-size':14,fill:C.mute,class:'mono'},t);
+  spots.forEach((s,c)=>{
+    const x=X0+c*DX;
+    const isEmb=s.k==='emb';
+    el('rect',{x,y,width:BW,height:BH,rx:8,fill:'#fff',stroke:isEmb?'#aaa':C.ink,'stroke-width':1.5});
+    el('text',{x:x+BW/2,y:y-8,'text-anchor':'middle','font-size':12,'font-weight':600},s.n);
+    el('text',{x:x+BW/2,y:y+16,'text-anchor':'middle','font-size':11,fill:C.mute},'SAE');
+    const nodes=[];
+    for(let i=0;i<3;i++){
+      const cy=y+36+i*28;
+      el('circle',{cx:x+22,cy,r:9,fill:C.blubg,stroke:C.blu,'stroke-width':1.5});
+      el('text',{x:x+38,y:cy+4,'font-size':12,class:'mono'},'f'+'₁₂₃'[i]);
+      nodes.push([x+22,cy]);
+    }
+    el('text',{x:x+BW/2,y:y+36+3*28-6,'text-anchor':'middle','font-size':11,fill:C.mute},'⋮');
+    const ey=y+BH-18;
+    el('rect',{x:x+13,y:ey-9,width:18,height:18,rx:3,fill:C.orgbg,stroke:C.org,'stroke-width':1.5});
+    el('text',{x:x+38,y:ey+4,'font-size':12,class:'mono'},'ε');
+    nodes.push([x+22,ey]);
+    pos[s.k+r]={x,y,nodes};
+  });
+});
+
+function line(a,b,col,dash){
+  const l=document.createElementNS(NS,'path');
+  const [x1,y1]=a,[x2,y2]=b;const mx=(x1+x2)/2;
+  l.setAttribute('d',`M${x1+10},${y1} C${mx},${y1} ${mx},${y2} ${x2-10},${y2}`);
+  l.setAttribute('fill','none');l.setAttribute('stroke',col);l.setAttribute('stroke-width',1.6);l.setAttribute('opacity',.75);
+  if(dash)l.setAttribute('stroke-dasharray','5 4');
+  edgeLayer.appendChild(l);
+}
+// same-token edges between spots (illustrative subset: f1 & eps of upstream to f1..eps of downstream)
+const sameE=[['emb','a0'],['emb','m0'],['emb','r0'],['a0','m0'],['a0','r0'],['m0','r0'],['r0','a1'],['r0','m1'],['r0','r1'],['a1','m1'],['a1','r1'],['m1','r1']];
+function draw(mode){
+  edgeLayer.innerHTML='';
+  if(mode==='same'){
+    sameE.forEach(([u,d])=>{
+      const U=pos[u+'1'],D=pos[d+'1'];
+      line(U.nodes[0],D.nodes[1],C.grn);
+      line(U.nodes[3],D.nodes[0],C.grn,true);
+    });
+  }
+  if(mode==='cross'){
+    [['emb','a0'],['r0','a1']].forEach(([u,d])=>{
+      const U=pos[u+'0'],D=pos[d+'1'];
+      line(U.nodes[0],D.nodes[0],C.hi);
+      line(U.nodes[2],D.nodes[1],C.hi);
+      line(U.nodes[3],D.nodes[2],C.hi,true);
+    });
+  }
+}
+document.querySelectorAll('.ctrl button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.ctrl button').forEach(x=>x.classList.remove('on'));b.classList.add('on');draw(b.dataset.m);
+});
+</script>
+</body>
+</html>

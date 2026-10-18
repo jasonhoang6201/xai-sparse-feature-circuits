@@ -3,3 +3,5 @@
 - [Correct directly, no praise](correct-directly-no-praise.md) — when the user restates, skip "bạn hiểu đúng", fix the wrong parts in a conversational tone
 - [Annotate formula symbols](annotate-formula-symbols.md) — write (meaning) after every symbol like W_U, x_L, W_enc so the user learns to read formulas
 - [Only paper numbers](only-paper-numbers.md) — slide/seminar files cite only numbers stated in the paper, none self-computed or from the web
+- [PPTX slide conventions](pptx-slide-conventions.md) — Google Slides–safe text, real sub/superscript, topic titles, few words, keep old deck style
+- [Top-down, few terms](top-down-few-terms.md) — start with the problem a concept solves in plain words; one level and at most one new term per reply

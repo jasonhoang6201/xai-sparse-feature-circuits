@@ -9,4 +9,6 @@ In seminar/slide material, every number must appear in the paper itself (`.claud
 
 **Why:** the user said "chỉ ghi số trong paper" after the first `seminar-flow.md` draft mixed in self-computed and external numbers.
 
+**Exception:** citations of related work show year and venue (e.g. "NeurIPS 2024", "arXiv preprint 2023"), verified by web search. The user asked for this on 2026-10-18 so the audience can judge credibility and publication time.
+
 **How to apply:** before writing a number into a slide file, grep `paper.txt` for it. If it is not there, describe the fact without the number, or cite the paper's own wording. Related: [[keep-technical-terms-english]].
