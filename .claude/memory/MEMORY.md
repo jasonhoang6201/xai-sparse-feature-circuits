@@ -1,3 +1,4 @@
 - [Term language in Vietnamese text](keep-technical-terms-english.md) — keep domain terms (interpretability, feature, circuit…) English; translate common words (giả thuyết, hành vi, ngưỡng…)
 - [One concept at a time](one-concept-at-a-time.md) — explain one concept per reply, wait for confirmation before the next
 - [Correct directly, no praise](correct-directly-no-praise.md) — when the user restates, skip "bạn hiểu đúng", fix the wrong parts in a conversational tone
+- [Annotate formula symbols](annotate-formula-symbols.md) — write (meaning) after every symbol like W_U, x_L, W_enc so the user learns to read formulas

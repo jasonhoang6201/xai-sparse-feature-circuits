@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zero-ablation và mean-ablation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f7f6f2;--card:#fff;--ink:#1d1d1f;--mute:#6b6b70;--line:#dcdad3;--hi:#c0392b;--hibg:#fdecea;--grn:#1e8449;--grnbg:#e8f6ee;--blu:#2464a8;--blubg:#e8f0fa;--gry:#9a9aa0;--grybg:#eeede8}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Be Vietnam Pro",sans-serif;line-height:1.55}
+main{max-width:1100px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:24px;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 16px}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px}
+code,.mono{font-family:"JetBrains Mono",monospace;font-size:14px}
+.pipe{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.pipe span{border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:13px;cursor:pointer;color:var(--mute);background:#fff}
+.pipe span.on{background:var(--hi);border-color:var(--hi);color:#fff;font-weight:600}
+.pipe span.done{color:var(--ink);border-color:#bbb}
+.nav{display:flex;gap:10px;margin-bottom:14px}
+.nav button{font:inherit;font-size:15px;padding:7px 16px;border-radius:8px;border:2px solid var(--ink);background:#fff;cursor:pointer}
+.nav button:disabled{opacity:.3;cursor:default}
+.slide{display:none}
+.slide.on{display:block}
+.slide h2{font-size:20px;margin:0 0 10px}
+.explain{border-left:4px solid var(--hi);background:var(--hibg);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0}
+.ok{border-left-color:var(--grn);background:var(--grnbg)}
+.flow{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;margin:12px 0}
+.box{border:2px solid var(--ink);border-radius:10px;padding:10px 12px;background:#fff;min-width:140px}
+.box.red{border-color:var(--hi);background:var(--hibg)}
+.box.grn{border-color:var(--grn);background:var(--grnbg)}
+.box.blu{border-color:var(--blu);background:var(--blubg)}
+.box.gry{border-color:var(--gry);background:var(--grybg);color:var(--mute)}
+.box b{display:block;font-size:14px}
+.arr{align-self:center;font-size:22px;color:var(--mute)}
+table{border-collapse:collapse;margin:10px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:6px 10px;text-align:left}
+th{background:#f1efe9}
+td.n{font-family:"JetBrains Mono",monospace;text-align:right}
+.scroll{overflow-x:auto}
+.note{color:var(--mute);font-size:14px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:760px){.two{grid-template-columns:1fr}}
+.panel{border:1px solid var(--line);border-radius:10px;padding:12px}
+.panel h3{font-size:16px;margin:0 0 8px}
+/* bar chart */
+.bars{display:flex;align-items:flex-end;gap:14px;height:170px;border-bottom:2px solid var(--ink);position:relative;padding:0 8px;margin:10px 0 4px}
+.bar{width:54px;background:var(--blu);border-radius:4px 4px 0 0;position:relative}
+.bar span{position:absolute;top:-20px;left:0;right:0;text-align:center;font-family:"JetBrains Mono",monospace;font-size:13px}
+.meanline{position:absolute;left:0;right:0;border-top:2px dashed var(--hi)}
+.meanline span{position:absolute;right:4px;top:-20px;color:var(--hi);font-family:"JetBrains Mono",monospace;font-size:13px;font-weight:600}
+.blabels{display:flex;gap:14px;padding:0 8px;font-size:12px;color:var(--mute)}
+.blabels span{width:54px;text-align:center}
+/* node grid */
+.grid{display:grid;grid-template-columns:repeat(8,34px);gap:5px;margin:10px 0}
+.nd{width:34px;height:34px;border-radius:6px;border:2px solid var(--blu);background:var(--blubg);font-size:11px;display:flex;align-items:center;justify-content:center;font-family:"JetBrains Mono",monospace}
+.nd.x{border-color:var(--hi);background:var(--hi);color:#fff;font-weight:700}
+.nd.c{border-color:var(--grn);background:var(--grn);color:#fff;font-weight:700}
+.nd.m{border-color:var(--gry);background:var(--grybg);color:var(--mute)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;margin:6px 0}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:5px}
+.big{font-size:22px;font-weight:700;font-family:"JetBrains Mono",monospace}
+.meter{height:22px;background:var(--grybg);border-radius:6px;overflow:hidden;margin:6px 0}
+.meter div{height:100%;background:var(--grn)}
+</style>
+</head>
+<body>
+<main>
+<h1>Zero-ablation và mean-ablation: thay node bằng 0 hay bằng mean</h1>
+<p class="sub">Model thu nhỏ, đã giảm chiều cho dễ hiểu. Dataset D (tập câu dùng cho một hành vi) chỉ có 4 câu. Các giá trị fᵢ (feature activation) và m (metric) là số minh họa. Dùng ← → để chuyển bước.</p>
+
+<section>
+  <div class="pipe" id="pipe"></div>
+  <div class="nav"><button id="prev">← Trước</button><button id="next">Tiếp →</button></div>
+
+  <!-- 1 -->
+  <div class="slide">
+    <h2>Bước 1. Cái gì cố định sau khi train, cái gì đổi theo từng câu</h2>
+    <div class="flow">
+      <div class="box gry"><b>Cố định sau khi train SAE</b>W_enc (weight encoder)<br>W_dec (weight decoder)<br>vᵢ (hướng của feature i = cột i của W_dec)</div>
+      <div class="arr">≠</div>
+      <div class="box blu"><b>Tính lại cho mỗi câu, mỗi token</b>x (activation của LM)<br>f = ReLU(W_enc·x + b)<br>fᵢ (feature activation) = phần tử thứ i của f</div>
+    </div>
+    <p>Cùng một SAE, 4 câu khác nhau → 4 giá trị f₁ khác nhau:</p>
+    <div class="flow">
+      <div class="box"><b>"The boy …"</b>x = [2.0, 0.1, …]</div><div class="arr">→ SAE →</div><div class="box blu"><b>f₁ = 2.0</b></div>
+    </div>
+    <div class="flow">
+      <div class="box"><b>"The boys …"</b>x = [0.1, 1.9, …]</div><div class="arr">→ SAE →</div><div class="box blu"><b>f₁ = 0</b></div>
+    </div>
+    <div class="flow">
+      <div class="box"><b>"The girl …"</b>x = [1.8, 0.0, …]</div><div class="arr">→ SAE →</div><div class="box blu"><b>f₁ = 1.8</b></div>
+    </div>
+    <div class="flow">
+      <div class="box"><b>"The girls …"</b>x = [0.0, 2.1, …]</div><div class="arr">→ SAE →</div><div class="box blu"><b>f₁ = 0</b></div>
+    </div>
+    <div class="explain">Node = fᵢ tại một layer, một spot, một token position. Trong <b>một</b> lần chạy, node có 1 giá trị. Qua <b>nhiều câu</b>, cùng node đó có nhiều giá trị khác nhau, vì x khác nhau.</div>
+  </div>
+
+  <!-- 2 -->
+  <div class="slide">
+    <h2>Bước 2. Mean của một node = trung bình giá trị của node đó trên các câu trong D</h2>
+    <div class="two">
+      <div class="panel">
+        <h3>Node Q: f₁ "singular noun", layer 3 resid, token thứ 2</h3>
+        <div class="bars">
+          <div class="bar" style="height:100px"><span>2.0</span></div>
+          <div class="bar" style="height:0"><span>0</span></div>
+          <div class="bar" style="height:90px"><span>1.8</span></div>
+          <div class="bar" style="height:0"><span>0</span></div>
+          <div class="meanline" style="bottom:47.5px"><span>mean 0.95</span></div>
+        </div>
+        <div class="blabels"><span>boy</span><span>boys</span><span>girl</span><span>girls</span></div>
+        <p class="note">(2.0 + 0 + 1.8 + 0) / 4 = 0.95. Giá trị khác nhau giữa các câu, nên mean nằm giữa.</p>
+      </div>
+      <div class="panel">
+        <h3>Node P: f₇ "câu bắt đầu bằng The", layer 1 resid, token thứ 1</h3>
+        <div class="bars">
+          <div class="bar" style="height:150px"><span>3.0</span></div>
+          <div class="bar" style="height:150px"><span>3.0</span></div>
+          <div class="bar" style="height:150px"><span>3.0</span></div>
+          <div class="bar" style="height:150px"><span>3.0</span></div>
+          <div class="meanline" style="bottom:150px"><span>mean 3.0</span></div>
+        </div>
+        <div class="blabels"><span>boy</span><span>boys</span><span>girl</span><span>girls</span></div>
+        <p class="note">Mọi câu đều bắt đầu bằng "The", nên giá trị giống nhau, mean = 3.0.</p>
+      </div>
+    </div>
+    <div class="explain">Mỗi node có mean riêng. Mean được tính tại cùng token position ("mean position-specific values", footnote 2, trang 6 của paper). Tính một lần trước khi đo, rồi dùng lại.</div>
+  </div>
+
+  <!-- 3 -->
+  <div class="slide">
+    <h2>Bước 3. Ba giá trị có thể dùng để ghi đè node</h2>
+    <p>Câu đang chạy: <span class="mono">"The boy …"</span>, node Q đang có giá trị <b>2.0</b>.</p>
+    <div class="flow">
+      <div class="box blu"><b>Patching</b>Q ← Q_patch = 0<br>(giá trị của Q khi chạy câu "The boys …")</div>
+      <div class="box red"><b>Zero-ablation</b>Q ← 0</div>
+      <div class="box gry"><b>Mean-ablation</b>Q ← 0.95<br>(mean của Q trên D)</div>
+    </div>
+    <div class="scroll"><table>
+      <tr><th>Cách</th><th>Điều kiện</th><th>Paper dùng ở đâu</th></tr>
+      <tr><td>Patching</td><td>có contrastive pair</td><td>tính IE (indirect effect) ở Section 3, subject-verb agreement</td></tr>
+      <tr><td>Zero-ablation</td><td>chỉ có 1 input</td><td>tính IE ở Section 4 (SHIFT) và Section 5 (unsupervised)</td></tr>
+      <tr><td>Mean-ablation</td><td>có dataset D để tính mean</td><td>đo faithfulness: gán cho mọi node <b>ngoài</b> circuit</td></tr>
+    </table></div>
+    <div class="explain">Hai trường hợp ở các bước sau: <b>A</b> dùng để chọn node (bước 4), <b>B</b> dùng để kiểm tra circuit đã chọn (bước 5–7).</div>
+  </div>
+
+  <!-- 4 -->
+  <div class="slide">
+    <h2>Bước 4. Trường hợp A: tính IE của một node (chọn node vào circuit)</h2>
+    <div class="legend"><span><i style="background:var(--blubg);border:2px solid var(--blu)"></i>giữ nguyên giá trị gốc</span><span><i style="background:var(--hi)"></i>node đang xét, ghi đè (0 hoặc patch)</span></div>
+    <div class="grid">
+      <div class="nd"></div><div class="nd"></div><div class="nd"></div><div class="nd"></div><div class="nd"></div><div class="nd"></div><div class="nd"></div><div class="nd"></div>
+      <div class="nd"></div><div class="nd"></div><div class="nd x">Q</div><div class="nd"></div><div class="nd"></div><div class="nd"></div><div class="nd"></div><div class="nd"></div>
+      <div class="nd"></div><div class="nd"></div><div class="nd"></div><div class="nd"></div><div class="nd"></div><div class="nd"></div><div class="nd"></div><div class="nd"></div>
+    </div>
+    <div class="flow">
+      <div class="box"><b>chạy "The boy …"</b>m = 2.0</div><div class="arr">→</div>
+      <div class="box red"><b>chỉ Q ← 0</b>mọi node khác giữ nguyên</div><div class="arr">→</div>
+      <div class="box"><b>m = 0.3</b></div><div class="arr">→</div>
+      <div class="box grn"><b>IE = 0.3 − 2.0 = −1.7</b>|IE| &gt; T_N → Q vào circuit</div>
+    </div>
+    <p class="note">m = log P("has") − log P("have"); T_N (node threshold). Lặp lại cho từng node, mỗi lần chỉ đổi 1 node.</p>
+  </div>
+
+  <!-- 5 -->
+  <div class="slide">
+    <h2>Bước 5. Trường hợp B: kiểm tra circuit (faithfulness)</h2>
+    <p>Sau bước 4 đã có circuit C. Câu hỏi bây giờ: <b>chỉ riêng các node trong C</b> có đủ tạo ra hành vi không?</p>
+    <div class="legend"><span><i style="background:var(--grn)"></i>node trong C, giữ giá trị gốc</span><span><i style="background:var(--grybg);border:2px solid var(--gry)"></i>node ngoài C, ghi đè bằng mean</span></div>
+    <div class="grid">
+      <div class="nd m"></div><div class="nd c"></div><div class="nd m"></div><div class="nd m"></div><div class="nd m"></div><div class="nd m"></div><div class="nd m"></div><div class="nd m"></div>
+      <div class="nd m"></div><div class="nd m"></div><div class="nd c">Q</div><div class="nd m"></div><div class="nd m"></div><div class="nd c"></div><div class="nd m"></div><div class="nd m"></div>
+      <div class="nd m"></div><div class="nd m"></div><div class="nd m"></div><div class="nd m"></div><div class="nd m"></div><div class="nd m"></div><div class="nd c"></div><div class="nd m"></div>
+    </div>
+    <div class="explain">Ngược với bước 4: ở đây <b>giữ</b> vài node, <b>ghi đè</b> tất cả các node còn lại cùng một lúc (Pythia: hàng trăm nghìn node).<br>Nếu giữ nguyên các node ngoài C, LM chạy đầy đủ như bình thường, m không đổi, nên không kiểm tra được C.</div>
+  </div>
+
+  <!-- 6 -->
+  <div class="slide">
+    <h2>Bước 6. Vì sao node ngoài circuit nhận mean, không nhận 0</h2>
+    <p>Node P ("câu bắt đầu bằng The") nằm ngoài C vì nó giống nhau ở mọi câu, IE = 0. LM luôn thấy P = 3.0.</p>
+    <div class="two">
+      <div class="panel">
+        <h3>Gán P = 0</h3>
+        <div class="flow">
+          <div class="box red"><b>P = 0</b>LM chưa từng gặp giá trị này ở vị trí này</div>
+          <div class="arr">→</div>
+          <div class="box red"><b>layer sau tính sai</b>m giảm</div>
+        </div>
+        <p class="note">m giảm vì LM nhận input lạ, không phải vì C thiếu node cho subject-verb agreement. Faithfulness ra thấp sai.</p>
+      </div>
+      <div class="panel">
+        <h3>Gán P = mean = 3.0</h3>
+        <div class="flow">
+          <div class="box grn"><b>P = 3.0</b>đúng giá trị LM luôn thấy</div>
+          <div class="arr">→</div>
+          <div class="box grn"><b>không đổi gì</b></div>
+        </div>
+        <p class="note">Node chỉ chứa thông tin chung của task thì mean giữ nguyên thông tin đó.</p>
+      </div>
+    </div>
+    <div class="two">
+      <div class="panel">
+        <h3>Node Q ("singular noun") nếu nằm ngoài C</h3>
+        <div class="flow">
+          <div class="box gry"><b>Q = 0.95</b>nằm giữa 2.0 (số ít) và 0 (số nhiều)</div>
+          <div class="arr">→</div>
+          <div class="box gry"><b>LM không biết câu số ít hay số nhiều</b></div>
+        </div>
+      </div>
+      <div class="panel ok" style="border-left:4px solid var(--grn);background:var(--grnbg)">
+        <h3>Kết quả</h3>
+        Mean-ablation xóa đúng phần <b>khác nhau giữa các câu</b> (thông tin riêng của input) và giữ phần chung của task. Paper: "given information about the task, but not about specific inputs".
+      </div>
+    </div>
+  </div>
+
+  <!-- 7 -->
+  <div class="slide">
+    <h2>Bước 7. Ba lần đo, ra faithfulness</h2>
+    <div class="flow">
+      <div class="box blu"><b>m(M): model đầy đủ</b>không ghi đè node nào<br><span class="big">2.0</span></div>
+      <div class="box grn"><b>m(C): chỉ giữ circuit</b>node ngoài C ← mean<br><span class="big">1.6</span></div>
+      <div class="box gry"><b>m(∅): circuit rỗng</b>mọi node ← mean<br><span class="big">0.2</span></div>
+    </div>
+    <div class="explain mono">faithfulness = (m(C) − m(∅)) / (m(M) − m(∅)) = (1.6 − 0.2) / (2.0 − 0.2) = 0.78</div>
+    <div class="meter"><div style="width:78%"></div></div>
+    <p class="note">0 = C không giữ được gì so với mean-ablate tất cả; 1 = C giữ được toàn bộ hành vi. M (model đầy đủ); C (circuit); ∅ (empty circuit). m tính trung bình trên các câu của D. Công thức trang 5 của paper; các số ở đây là minh họa.</p>
+    <p class="note">Trường hợp A chỉ đổi 1 node mỗi lần. Nếu hai node A₁, A₂ cùng mang thông tin số nhiều, bỏ từng node thì node kia còn, nên cả hai có |IE| nhỏ và bị loại. Đến bước này cả hai bị mean-ablate cùng lúc, m(C) giảm, faithfulness thấp, nên biết C đang thiếu node.</p>
+  </div>
+</section>
+
+<section>
+  <h2 style="font-size:18px;margin:0 0 8px">Ký hiệu</h2>
+  <p class="mono" style="margin:0">x (activation tại chỗ đọc) · fᵢ (activation của feature i) · vᵢ (hướng của feature i) · W_enc / W_dec (weight encoder / decoder) · b (bias) · D (dataset) · m (metric) · P (xác suất) · IE (indirect effect) · T_N (node threshold) · C (circuit) · M (model đầy đủ) · ∅ (circuit rỗng)</p>
+</section>
+</main>
+
+<script>
+const NAMES = ['Cố định và thay đổi','Mean của 1 node','3 cách ghi đè','A: IE 1 node','B: kiểm tra circuit','Vì sao mean','Faithfulness'];
+const slides = [...document.querySelectorAll('.slide')];
+const pipe = document.getElementById('pipe');
+let cur = 0;
+NAMES.forEach((n, i) => {
+  const s = document.createElement('span');
+  s.textContent = (i + 1) + '. ' + n;
+  s.onclick = () => go(i);
+  pipe.appendChild(s);
+});
+function go(i){
+  cur = Math.max(0, Math.min(slides.length - 1, i));
+  slides.forEach((s, k) => s.classList.toggle('on', k === cur));
+  [...pipe.children].forEach((s, k) => { s.classList.toggle('on', k === cur); s.classList.toggle('done', k < cur); });
+  document.getElementById('prev').disabled = cur === 0;
+  document.getElementById('next').disabled = cur === slides.length - 1;
+}
+document.getElementById('prev').onclick = () => go(cur - 1);
+document.getElementById('next').onclick = () => go(cur + 1);
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); go(cur + 1); }
+  if (e.key === 'ArrowLeft') go(cur - 1);
+});
+go(0);
+</script>
+</body>
+</html>

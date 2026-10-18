@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unembedding từng bước</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f7f6f2;--card:#fff;--ink:#1d1d1f;--mute:#6b6b70;--line:#dcdad3;--hi:#c0392b;--hibg:#fdecea;--grn:#1e8449;--grnbg:#e8f6ee}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Be Vietnam Pro",sans-serif;line-height:1.55}
+main{max-width:1280px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:24px;margin:0 0 4px}
+h2{font-size:18px;margin:0 0 8px}
+.sub{color:var(--mute);margin:0 0 16px}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px}
+.scroll{overflow-x:auto}
+svg{display:block;min-width:1100px;width:100%;height:auto}
+svg text{font-family:"Be Vietnam Pro",sans-serif}
+svg .mono{font-family:"JetBrains Mono",monospace}
+.pick{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+.pick button{font:inherit;font-size:14px;padding:6px 12px;border-radius:8px;border:2px solid var(--line);background:#fff;cursor:pointer}
+.pick button.on{border-color:var(--hi);background:var(--hibg);color:var(--hi);font-weight:600}
+.explain{border-left:4px solid var(--hi);background:var(--hibg);padding:12px 16px;border-radius:0 8px 8px 0;font-size:15px}
+.mono{font-family:"JetBrains Mono",monospace;font-size:14px}
+.mat{display:flex;align-items:center;gap:14px;flex-wrap:nowrap;min-width:900px}
+.mat table{border-collapse:collapse;font-family:"JetBrains Mono",monospace;font-size:13px}
+.mat td,.mat th{border:1px solid var(--line);padding:4px 8px;text-align:center;min-width:44px}
+.mat th{background:#f1efe9;font-weight:600;color:var(--mute)}
+.mat tr.on td{background:var(--hibg);color:var(--hi);font-weight:600}
+.mat .lbl{border:none;text-align:right;color:var(--mute);font-family:"Be Vietnam Pro",sans-serif}
+.mat tr.on .lbl{background:none}
+.mat .xcol td{background:var(--grnbg);color:var(--grn)}
+.op{font-size:26px;color:var(--mute)}
+.cap{font-size:13px;color:var(--mute);text-align:center;margin-top:4px}
+.terms{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.terms div{border:1px solid var(--line);border-radius:10px;padding:12px;font-size:14px}
+.terms b{font-size:15px}
+</style>
+</head>
+<body>
+<main>
+<h1>Unembedding: từ x_L (512 số) tới xác suất của từ tiếp theo</h1>
+<p class="sub">Câu "The keys ___", xét token cuối <b>keys</b>. Pythia-70M: <code class="mono">x_L</code> (residual stream ở layer cuối) có 512 số, vocab (danh sách token mà model biết) có khoảng 50k token. Dấu <b>⋮</b> là các phần tử bị lược bớt. Mọi con số là minh họa.</p>
+
+<section>
+  <h2>1. Dạng network</h2>
+  <div class="pick" id="pick"><span style="color:var(--mute);font-size:14px">Chọn một logit để xem các đường nối vào nó:</span></div>
+  <div class="explain" id="explain"></div>
+  <div class="scroll" style="margin-top:12px"><svg id="svg" viewBox="0 0 1240 560"></svg></div>
+</section>
+
+<section>
+  <h2>2. Cùng phép tính đó, viết dạng ma trận</h2>
+  <p class="sub" style="margin-bottom:10px">Mỗi hàng của <code class="mono">W_U</code> (weight unembedding) là tập đường nối đi vào một logit ở hình 1. Hàng đang chọn được tô đỏ.</p>
+  <div class="scroll"><div class="mat" id="mat"></div></div>
+</section>
+
+<section>
+  <div class="terms">
+    <div><b>x_L</b> (residual stream ở layer cuối)<br>512 số, thay đổi theo từng câu và từng token. Là output của layer 5 trong Pythia.</div>
+    <div><b>W_U</b> (weight unembedding)<br>Ma trận khoảng 50k hàng × 512 cột. Cố định sau khi train. Hàng k là 512 weight nối mọi neuron của x_L tới logit k.</div>
+    <div><b>logits</b> (điểm thô của từng từ)<br>Khoảng 50k số, mỗi token trong vocab một số. logits[k] = hàng k của W_U · x_L. Số logit bằng số hàng của W_U, không phải 512.</div>
+    <div><b>token id</b> (số thứ tự của token)<br>Do tokenizer đặt sẵn trước khi train. Vị trí k trong logits ứng với token id k. Bảng embedding ở đầu model dùng chung bảng id này.</div>
+    <div><b>softmax</b><br>Hàm đổi khoảng 50k logit thành xác suất có tổng bằng 1. Logit lớn hơn thì xác suất lớn hơn. Không có weight.</div>
+    <div><b>Không có activation function</b><br>Unembedding chỉ là phép nhân ma trận: mỗi logit là tổng có trọng số của 512 số, không qua ReLU hay GELU.</div>
+  </div>
+</section>
+</main>
+
+<script>
+const NS = "http://www.w3.org/2000/svg";
+// cột x_L: 4 neuron hiển thị + dấu ⋮
+const X = [
+  {name:"x₁", v:"1.5", y:110},
+  {name:"x₂", v:"0.5", y:190},
+  {name:"x₃", v:"−0.2", y:270},
+  {dots:true, y:345},
+  {name:"x₅₁₂", v:"0.9", y:420},
+];
+// cột logits: 3 token đầu + ⋮ + token cuối
+const L = [
+  {id:"0", word:"have", logit:"3.0", p:"0.92", y:110, row:["2.0","0.0","0.3","…","0.1"]},
+  {id:"1", word:"has", logit:"−3.0", p:"0.002", y:190, row:["−2.0","0.0","0.1","…","−0.4"]},
+  {id:"2", word:"the", logit:"0.5", p:"0.08", y:270, row:["0.0","1.0","−0.5","…","0.2"]},
+  {dots:true, y:345},
+  {id:"≈50k−1", word:"(token cuối)", logit:"−1.2", p:"≈0", y:420, row:["−0.3","0.4","0.0","…","−0.6"]},
+];
+const AX = 170, BX = 560, PX = 900;
+let sel = 0;
+
+function el(tag, attrs, text){
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function draw(){
+  const svg = document.getElementById("svg");
+  svg.innerHTML = "";
+  svg.appendChild(el("defs", {})).innerHTML =
+    '<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6b6b70"/></marker>';
+
+  // tiêu đề cột
+  const heads = [
+    [AX, "x_L", "residual stream cuối của \"keys\"", "512 số"],
+    [(AX+BX)/2, "W_U", "weight unembedding", "≈50k × 512 đường nối"],
+    [BX, "logits", "W_U · x_L", "≈50k số"],
+    [730, "softmax", "đổi điểm → xác suất", "không có weight"],
+    [PX, "xác suất", "tổng = 1", "≈50k số"],
+    [1110, "tokenizer", "tra bảng token id", "vị trí k → chữ"],
+  ];
+  heads.forEach(([x, t, s1, s2]) => {
+    svg.appendChild(el("text", {x, y:26, "text-anchor":"middle", "font-size":16, "font-weight":700}, t));
+    svg.appendChild(el("text", {x, y:44, "text-anchor":"middle", "font-size":12, fill:"#6b6b70"}, s1));
+    svg.appendChild(el("text", {x, y:60, "text-anchor":"middle", "font-size":12, fill:"#6b6b70"}, s2));
+  });
+
+  // đường nối: mọi neuron x → mọi logit
+  const xs = X.filter(n => !n.dots), ls = L.map((n, i) => ({...n, i})).filter(n => !n.dots);
+  ls.forEach(l => {
+    xs.forEach(x => {
+      const on = l.i === sel;
+      svg.appendChild(el("line", {x1:AX+24, y1:x.y, x2:BX-24, y2:l.y,
+        stroke: on ? "#c0392b" : "#d5d3cc", "stroke-width": on ? 2.2 : 1}));
+    });
+  });
+  // nhãn weight trên các đường đang chọn
+  const s = L[sel];
+  xs.forEach((x, j) => {
+    const col = [0,1,2,4][j];
+    const t = 0.72, lx = AX+24 + t*(BX-24-AX-24), ly = x.y + t*(s.y - x.y);
+    const colName = ["1","2","3","","512"][col];
+    const g = el("g", {});
+    g.appendChild(el("rect", {x:lx-98, y:ly-11, width:196, height:20, rx:4, fill:"#fff", stroke:"#c0392b"}));
+    g.appendChild(el("text", {x:lx, y:ly+4, "text-anchor":"middle", "font-size":11, fill:"#c0392b", class:"mono"},
+      `W_U[hàng ${s.id}, cột ${colName}] = ${s.row[col]}`));
+    svg.appendChild(g);
+  });
+
+  // cột x_L
+  X.forEach(n => {
+    if (n.dots){ svg.appendChild(el("text", {x:AX, y:n.y+8, "text-anchor":"middle", "font-size":26, fill:"#6b6b70"}, "⋮")); return; }
+    svg.appendChild(el("circle", {cx:AX, cy:n.y, r:24, fill:"#e8f6ee", stroke:"#1e8449", "stroke-width":2}));
+    svg.appendChild(el("text", {x:AX, y:n.y+4, "text-anchor":"middle", "font-size":12, "font-weight":600, class:"mono", fill:"#1e8449"}, n.v));
+    svg.appendChild(el("text", {x:AX-34, y:n.y+5, "text-anchor":"end", "font-size":14, class:"mono"}, n.name));
+  });
+  svg.appendChild(el("text", {x:AX, y:470, "text-anchor":"middle", "font-size":12, fill:"#6b6b70"}, "xᵢ = neuron thứ i của x_L"));
+
+  // cột logits, softmax, xác suất, tokenizer
+  L.forEach((n, i) => {
+    if (n.dots){
+      [BX, PX, 1110].forEach(x => svg.appendChild(el("text", {x, y:n.y+8, "text-anchor":"middle", "font-size":26, fill:"#6b6b70"}, "⋮")));
+      return;
+    }
+    const on = i === sel;
+    const c = el("circle", {cx:BX, cy:n.y, r:24, fill: on ? "#fdecea" : "#fff", stroke: on ? "#c0392b" : "#1d1d1f", "stroke-width":2, style:"cursor:pointer"});
+    c.addEventListener("click", () => { sel = i; render(); });
+    svg.appendChild(c);
+    svg.appendChild(el("text", {x:BX, y:n.y+4, "text-anchor":"middle", "font-size":12, "font-weight":600, class:"mono", fill: on ? "#c0392b" : "#1d1d1f", "pointer-events":"none"}, n.logit));
+    svg.appendChild(el("text", {x:BX+32, y:n.y-14, "font-size":11, class:"mono", fill:"#6b6b70"}, `logits[${n.id}]`));
+    svg.appendChild(el("line", {x1:BX+26, y1:n.y, x2:668, y2:n.y, stroke:"#6b6b70", "marker-end":"url(#ar)"}));
+    svg.appendChild(el("line", {x1:792, y1:n.y, x2:PX-28, y2:n.y, stroke:"#6b6b70", "marker-end":"url(#ar)"}));
+    svg.appendChild(el("circle", {cx:PX, cy:n.y, r:24, fill: on ? "#fdecea" : "#fff", stroke: on ? "#c0392b" : "#1d1d1f", "stroke-width":2}));
+    svg.appendChild(el("text", {x:PX, y:n.y+4, "text-anchor":"middle", "font-size":11, "font-weight":600, class:"mono", fill: on ? "#c0392b" : "#1d1d1f"}, n.p));
+    svg.appendChild(el("line", {x1:PX+26, y1:n.y, x2:1030, y2:n.y, stroke:"#6b6b70", "stroke-dasharray":"4 3", "marker-end":"url(#ar)"}));
+    svg.appendChild(el("rect", {x:1034, y:n.y-16, width:160, height:32, rx:6, fill: on ? "#fdecea" : "#f1efe9", stroke: on ? "#c0392b" : "#dcdad3"}));
+    svg.appendChild(el("text", {x:1044, y:n.y+5, "font-size":13, class:"mono", fill:"#6b6b70"}, `id ${n.id}`));
+    svg.appendChild(el("text", {x:1184, y:n.y+5, "text-anchor":"end", "font-size":14, "font-weight":600, fill: on ? "#c0392b" : "#1d1d1f"}, n.word));
+  });
+  // khối softmax
+  svg.appendChild(el("rect", {x:672, y:80, width:116, height:370, rx:10, fill:"#f1efe9", stroke:"#1d1d1f", "stroke-width":1.5}));
+  svg.appendChild(el("text", {x:730, y:250, "text-anchor":"middle", "font-size":15, "font-weight":700}, "softmax"));
+  svg.appendChild(el("text", {x:730, y:272, "text-anchor":"middle", "font-size":11, fill:"#6b6b70"}, "đọc cả ≈50k logit"));
+  svg.appendChild(el("text", {x:730, y:288, "text-anchor":"middle", "font-size":11, fill:"#6b6b70"}, "cùng lúc"));
+
+  // chú thích dưới
+  svg.appendChild(el("text", {x:20, y:515, "font-size":13, fill:"#6b6b70"},
+    "Mỗi logit nhận đường nối từ cả 512 neuron của x_L (chỉ vẽ 4). Có ≈50k logit, nên W_U có ≈50k × 512 weight."));
+  svg.appendChild(el("text", {x:20, y:538, "font-size":13, fill:"#6b6b70"},
+    "Mũi tên nét đứt: không phải phép tính, chỉ là tra bảng token id → chữ của tokenizer."));
+}
+
+function explain(){
+  const s = L[sel];
+  document.getElementById("explain").innerHTML =
+    `<b>logits[${s.id}]</b> (điểm của token id ${s.id} = "<b>${s.word}</b>") lấy <b>hàng ${s.id}</b> của <code class="mono">W_U</code> nhân vô hướng với <code class="mono">x_L</code>:<br>` +
+    `<span class="mono">logits[${s.id}] = W_U[${s.id},1]·x₁ + W_U[${s.id},2]·x₂ + … + W_U[${s.id},512]·x₅₁₂ = ${s.logit}</span><br>` +
+    `Trong <code class="mono">W_U[k,i]</code>, số đầu <b>k</b> là <b>hàng</b> (token id, có ≈50k hàng), số sau <b>i</b> là <b>cột</b> (neuron thứ i của x_L, có 512 cột).<br>Sau softmax: P("${s.word}") = ${s.p}. Model biết số này thuộc về "${s.word}" vì nó nằm ở <b>vị trí ${s.id}</b>, và tokenizer gán id ${s.id} cho "${s.word}".`;
+}
+
+function matrix(){
+  const xv = ["1.5","0.5","−0.2","⋮","0.9"];
+  let w = '<div><table><tr><th class="lbl"></th><th>cột 1</th><th>cột 2</th><th>cột 3</th><th>…</th><th>cột 512</th></tr>';
+  L.forEach((n, i) => {
+    if (n.dots){ w += '<tr><td class="lbl">⋮</td><td>⋮</td><td>⋮</td><td>⋮</td><td></td><td>⋮</td></tr>'; return; }
+    w += `<tr class="${i===sel?'on':''}"><td class="lbl">hàng ${n.id} (${n.word})</td>` + n.row.map(v => `<td>${v}</td>`).join("") + "</tr>";
+  });
+  w += '</table><div class="cap">W_U (weight unembedding): ≈50k hàng × 512 cột, cố định</div></div>';
+  let x = '<div><table class="xcol"><tr><th>x_L</th></tr>' + xv.map(v => `<tr><td>${v}</td></tr>`).join("") +
+          '</table><div class="cap">x_L: 512 số</div></div>';
+  let l = '<div><table><tr><th>logits</th></tr>';
+  L.forEach((n, i) => {
+    if (n.dots){ l += '<tr><td>⋮</td></tr>'; return; }
+    l += `<tr class="${i===sel?'on':''}"><td>${n.logit}</td></tr>`;
+  });
+  l += '</table><div class="cap">logits: ≈50k số</div></div>';
+  document.getElementById("mat").innerHTML = w + '<span class="op">·</span>' + x + '<span class="op">=</span>' + l;
+}
+
+function picker(){
+  const p = document.getElementById("pick");
+  p.querySelectorAll("button").forEach(b => b.remove());
+  L.forEach((n, i) => {
+    if (n.dots) return;
+    const b = document.createElement("button");
+    b.textContent = `logits[${n.id}] · ${n.word}`;
+    if (i === sel) b.className = "on";
+    b.onclick = () => { sel = i; render(); };
+    p.appendChild(b);
+  });
+}
+
+function render(){ picker(); explain(); draw(); matrix(); }
+render();
+</script>
+</body>
+</html>

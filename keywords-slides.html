@@ -165,7 +165,8 @@ tr.hl td { color: var(--accent); font-weight: 600; }
 resid  = resid + Attention(resid)   # lấy thông tin từ các token khác
 resid  = resid + MLP(resid)         # biến đổi riêng tại token này
 ... lặp lại cho mỗi layer ...
-logits = Unembed(resid_cuối)        # xác suất của token tiếp theo</div>
+logits = Unembed(resid_cuối)        # điểm của từng từ → xác suất token tiếp theo</div>
+  <p class="note">Ký hiệu: <code>resid</code> (residual stream của một token), <code>resid₀</code> (residual stream trước layer đầu tiên), <code>logits</code> (điểm thô của từng từ trong vocab, chưa qua softmax), <code>Unembed</code> (unembedding: nhân với ma trận <code>W_U</code>, mỗi từ trong vocab một hàng).</p>
   <ul>
     <li><b>Attention</b>: lấy thông tin từ các token đứng trước. Mỗi attention layer có nhiều <b>head</b> chạy song song.</li>
     <li><b>MLP</b>: hai linear layer với một nonlinearity ở giữa, xử lý từng token độc lập.</li>
@@ -181,7 +182,7 @@ logits = Unembed(resid_cuối)        # xác suất của token tiếp theo</div
   <h2>Pythia-70M và Gemma-2-2B</h2>
   <div class="en">hai model được phân tích</div>
   <div class="wrap"><table>
-    <tr><th></th><th class="n">Parameters</th><th class="n">Số layer</th><th class="n">d (d_model)</th><th>SAE</th></tr>
+    <tr><th></th><th class="n">Parameters</th><th class="n">Số layer</th><th class="n">d (d_model: số chiều residual stream)</th><th>SAE</th></tr>
     <tr><td>Pythia-70M</td><td class="n">70M</td><td class="n">6</td><td class="n">512</td><td>Tác giả tự train</td></tr>
     <tr><td>Gemma-2-2B</td><td class="n">2B</td><td class="n">26</td><td class="n">2304</td><td>Gemma Scope (Google, open-source)</td></tr>
   </table></div>
@@ -195,6 +196,7 @@ logits = Unembed(resid_cuối)        # xác suất của token tiếp theo</div
   <div class="en">basis-aligned direction · footnote 1</div>
   <p>Paper định nghĩa (footnote 1): neuron là <b>một tọa độ</b> của vector activation. Residual stream của Pythia có 512 chiều, nên tại mỗi vị trí có 512 neuron.</p>
   <div class="eq">x = [x₁, x₂, ..., x₅₁₂]     # mỗi xᵢ là một "neuron"</div>
+  <p class="note">Ký hiệu: <code>x</code> (vector activation tại một vị trí, một token), <code>xᵢ</code> (tọa độ thứ i của x, i chạy từ 1 tới 512).</p>
   <p>Định nghĩa này rộng hơn nghĩa thông thường: neuron không cần phải đứng sau một activation function. Một tọa độ của attention output cũng gọi là neuron.</p>
   <h3>Trong paper</h3>
   <p>Neuron là baseline. Paper chạy cùng thuật toán tìm circuit với neuron thay cho feature, rồi so sánh: cần bao nhiêu node để giải thích cùng một hành vi, và người đọc có hiểu được node đó không.</p>
@@ -238,11 +240,12 @@ logits = Unembed(resid_cuối)        # xác suất của token tiếp theo</div
   <h2>Dictionary learning</h2>
   <div class="en">dictionary · sparse coding</div>
   <h3>Là gì</h3>
-  <p>Tìm một tập vector <code>v₁, v₂, ..., v_N</code> (gọi là dictionary) sao cho mọi vector dữ liệu <code>x</code> viết được thành tổng có trọng số của <b>một vài</b> vector trong tập đó.</p>
+  <p>Tìm một tập vector <code>v₁, v₂, ..., v_N</code> (v: vector hướng, N: số vector; cả tập gọi là dictionary) sao cho mọi vector dữ liệu <code>x</code> (activation của một token) viết được thành tổng có trọng số của <b>một vài</b> vector trong tập đó.</p>
   <div class="eq">x ≈ 3.1·v₈₂ + 0.7·v₄₀₉₁ + 1.4·v₁₂₀₀₀     # chỉ 3 trên N hệ số khác 0</div>
-  <p>Điểm khác với PCA: N có thể lớn hơn số chiều của x rất nhiều (ví dụ 32768 vector cho x có d = 512; gọi là overcomplete), bù lại, mỗi x chỉ dùng vài vector trong số đó.</p>
+  <p class="note">Ký hiệu: <code>v₈₂</code> (vector thứ 82 trong dictionary), <code>3.1</code> (hệ số của v₈₂ cho x này), <code>≈</code> (xấp xỉ bằng).</p>
+  <p>Điểm khác với PCA: N có thể lớn hơn số chiều của x rất nhiều (ví dụ 32768 vector cho x có d (số chiều) = 512; gọi là overcomplete), bù lại, mỗi x chỉ dùng vài vector trong số đó.</p>
   <h3>Liên hệ với polysemantic</h3>
-  <p>Theo giả thuyết superposition, model dùng rất nhiều hướng nhưng mỗi input chỉ dùng vài hướng. Dictionary learning tìm đúng kiểu cấu trúc này: nhiều vector, mỗi lần chỉ dùng vài cái. Nếu học tốt, mỗi <code>vᵢ</code> ứng với một khái niệm.</p>
+  <p>Theo giả thuyết superposition, model dùng rất nhiều hướng nhưng mỗi input chỉ dùng vài hướng. Dictionary learning tìm đúng kiểu cấu trúc này: nhiều vector, mỗi lần chỉ dùng vài cái. Nếu học tốt, mỗi <code>vᵢ</code> (vector thứ i) ứng với một khái niệm.</p>
   <div class="next">Cần biết tiếp: <b>SAE</b>, neural network dùng để học dictionary này.</div>
 </section>
 
@@ -256,8 +259,9 @@ logits = Unembed(resid_cuối)        # xác suất của token tiếp theo</div
   <p>SAE gồm encoder và decoder. Người nghiên cứu train SAE <b>sau khi</b> LM đã train xong. Weight của LM giữ nguyên, SAE chỉ đọc activation <code>x</code>.</p>
   <div class="eq">encoder:  f  = ReLU(W_enc · x + b_enc)   x (512 số) → f (32 768 số, đa số = 0)
 decoder:  x̂ = Σᵢ fᵢ · vᵢ + b            f → x̂ (512 số), gần bằng x</div>
+  <p class="note">Ký hiệu: <code>f</code> (vector feature activation), <code>ReLU</code> (giữ số dương, đổi số âm thành 0), <code>W_enc</code> (weight encoder, 32 768 × 512), <code>b_enc</code> (bias encoder), <code>x̂</code> (đọc "x mũ": bản tái tạo của x), <code>Σᵢ</code> (cộng qua mọi i), <code>fᵢ</code> (hệ số của feature i), <code>vᵢ</code> (feature i = cột i của W_dec), <code>W_dec</code> (weight decoder, 512 × 32 768), <code>b</code> (bias decoder).</p>
   <ul>
-    <li>Cột i của <code>W_dec</code> là <code>vᵢ</code>, gọi là <b>feature</b>. Tập các cột này là dictionary.</li>
+    <li>Cột i của <code>W_dec</code> (weight decoder) là <code>vᵢ</code>, gọi là <b>feature</b>. Tập các cột này là dictionary.</li>
     <li><code>fᵢ ≥ 0</code> là <b>feature activation</b>: feature i có trong <code>x</code> mạnh bao nhiêu.</li>
   </ul>
   <div class="ex"><span class="k">Ví dụ 2 chiều, 3 feature (HTML, nấu ăn, bóng đá)</span>
@@ -277,6 +281,7 @@ decoder:  x̂ = Σᵢ fᵢ · vᵢ + b            f → x̂ (512 số), gần b�
   <p>Loss có thêm một phần phạt tổng độ lớn của <code>f</code>:</p>
   <div class="eq">Loss = ‖x − x̂‖²   +   λ · Σᵢ |fᵢ|
        x̂ gần x        f ít số khác 0</div>
+  <p class="note">Ký hiệu: <code>‖x − x̂‖²</code> (bình phương khoảng cách giữa x và bản tái tạo x̂: L2 reconstruction loss), <code>λ</code> (đọc "lambda": hệ số cân bằng hai phần), <code>Σᵢ |fᵢ|</code> (tổng trị tuyệt đối các feature activation: L1).</p>
   <div class="ex"><span class="k">Ví dụ (λ = 0.1, giá trị paper dùng)</span>
     Hai cách cho ra cùng <code>x̂</code> (slide trước):<br>
     <code>f = [2, 0, 0]</code> → phạt 0.1 × 2 = <b>0.2</b><br>
@@ -296,8 +301,8 @@ decoder:  x̂ = Σᵢ fᵢ · vᵢ + b            f → x̂ (512 số), gần b�
   <p>Train SAE xong, ta có 32 768 hướng nhưng chưa biết hướng nào mang nghĩa gì.</p>
   <h3>Là gì</h3>
   <div class="grid2">
-    <div><h4>Feature <code>vᵢ</code></h4><p>Một hướng, cố định sau khi train, giống nhau với mọi input.</p></div>
-    <div><h4>Feature activation <code>fᵢ(x)</code></h4><p>Một số ≥ 0, đổi theo từng token. Bằng 0 ở đa số token.</p></div>
+    <div><h4>Feature <code>vᵢ</code> (feature i)</h4><p>Một hướng, cố định sau khi train, giống nhau với mọi input.</p></div>
+    <div><h4>Feature activation <code>fᵢ(x)</code> (hệ số của feature i khi input là x)</h4><p>Một số ≥ 0, đổi theo từng token. Bằng 0 ở đa số token.</p></div>
   </div>
   <div class="ex"><span class="k">Ví dụ</span><code>v_HTML</code> không đổi. Token <code>&lt;div&gt;</code> cho <code>f_HTML = 2.0</code>, token <code>bóng</code> cho <code>f_HTML = 0</code>.</div>
   <h3>Đặt tên cho feature</h3>
@@ -305,7 +310,12 @@ decoder:  x̂ = Σᵢ fᵢ · vᵢ + b            f → x̂ (512 số), gần b�
     <li>Xem các token làm <code>fᵢ</code> cao nhất: feature <em>phản ứng</em> với cái gì.</li>
     <li>Nhân <code>vᵢ</code> qua unembedding: feature làm tăng xác suất của token nào.</li>
   </ol>
-  <p>Ví dụ trong paper (Fig. 4): "noun number detector" bật trên danh từ số nhiều làm chủ ngữ; "verb form discriminator" làm tăng <code>have</code> so với <code>has</code>. Công cụ Neuronpedia hiển thị cả hai thông tin trên.</p>
+  <p>Unembedding là bước cuối của LM: <code>logits = W_U · x_L</code>. <code>W_U</code> (weight unembedding) có một hàng cho mỗi từ trong vocab (Pythia ~50k từ, mỗi hàng 512 số). <code>x_L</code> (residual stream ở layer cuối, L = last). <code>logits</code> (điểm thô của từng từ, softmax đổi thành xác suất). Cách 2 thay <code>x_L</code> bằng <code>vᵢ</code>: <code>W_U · vᵢ</code> cho biết feature i làm logit của mỗi từ tăng hay giảm bao nhiêu (direct effect, bỏ qua các layer ở giữa).</p>
+  <div class="eq">x_L = [1.5, 0.5]     W_U: have [2, 0]   has [−2, 0]   the [0, 1]
+logits = W_U · x_L = [3, −3, 0.5]  → softmax → have 0.92, the 0.08, has 0.002
+
+v = [1, 0]:  W_U · v = [2, −2, 0]  → tăng have, giảm has</div>
+  <p>Ví dụ trong paper (Fig. 4): "noun number detector" bật trên danh từ số nhiều làm chủ ngữ; "verb form discriminator" làm tăng <code>have</code> so với <code>has</code>. Neuronpedia (neuronpedia.org, website của Lin &amp; Bloom 2023) hiển thị sẵn cả hai thông tin trên cho từng feature.</p>
   <div class="next">Cần biết tiếp: <b>phần SAE không tái tạo được</b>.</div>
 </section>
 
@@ -316,7 +326,7 @@ decoder:  x̂ = Σᵢ fᵢ · vᵢ + b            f → x̂ (512 số), gần b�
   <h3>Bối cảnh</h3>
   <p>Với activation thật, <code>x̂</code> chỉ gần bằng <code>x</code>. Nếu thay <code>x</code> bằng <code>x̂</code> khi chạy LM thì output đổi, nghĩa là mình đang phân tích một model khác.</p>
   <h3>Là gì</h3>
-  <div class="eq">ε = x − x̂
+  <div class="eq">ε = x − x̂            # ε (đọc "epsilon"): phần SAE không tái tạo được
 
 x  = [1.5, 1.5, 1.0, −0.5]
 x̂ = [1.5, 1.5, 1.0, −1.0]
@@ -340,12 +350,12 @@ x̂ = [1.5, 1.5, 1.0, −1.0]
   <div class="wrap"><table>
     <tr><th></th><th>Pythia-70M</th><th>Gemma-2-2B</th></tr>
     <tr><td>Nguồn</td><td>Tác giả train</td><td>Gemma Scope</td></tr>
-    <tr><td>d_SAE (số feature)</td><td class="m">64 × 512 = 32 768</td><td class="m">8 × d</td></tr>
+    <tr><td>d_SAE (số feature)</td><td class="m">64 × 512 = 32 768</td><td class="m">16 384 (phần chính paper ghi 8 × d; d = 2304 là số chiều residual stream của Gemma-2-2B)</td></tr>
     <tr><td>Encoder</td><td>ReLU</td><td>JumpReLU</td></tr>
     <tr><td>Vị trí</td><td>embedding, attn, MLP, resid</td><td>attn, MLP, resid</td></tr>
   </table></div>
   <h3>JumpReLU là gì</h3>
-  <p>ReLU có thêm ngưỡng θ riêng cho từng feature: dưới ngưỡng thì về 0.</p>
+  <p>ReLU có thêm ngưỡng θ (đọc "theta") riêng cho từng feature: dưới ngưỡng thì về 0. <code>z</code> (giá trị trước khi qua hàm, tức W_enc · x + b_enc).</p>
   <div class="eq">θ = 0.5:   z = 0.3 → ReLU: 0.3,  JumpReLU: 0
            z = 0.8 → ReLU: 0.8,  JumpReLU: 0.8</div>
   <p>Các giá trị nhỏ do nhiễu bị bỏ, nên <code>f</code> thưa hơn.</p>
@@ -358,17 +368,17 @@ x̂ = [1.5, 1.5, 1.0, −1.0]
   <h2>Metric <code>m</code></h2>
   <div class="en">con số đại diện cho hành vi</div>
   <h3>Bối cảnh</h3>
-  <p>Đã có node (feature). Giờ cần biết node nào quan trọng. Muốn đo "quan trọng" thì trước hết phải có một con số đo hành vi.</p>
+  <p>Đã có node: mỗi node là một feature activation <code>fᵢ</code> hoặc một SAE error <code>ε</code>, tại một token position. Giờ cần biết node nào quan trọng. Muốn đo "quan trọng" thì trước hết phải có một con số đo hành vi.</p>
   <h3>Là gì</h3>
-  <div class="eq">m = log P("are") − log P("is")
+  <div class="eq">m = log P("are") − log P("is")      # m (metric), P (xác suất model gán cho từ)
 
 P(are) = 0.8, P(is) = 0.1  →  m = −0.22 − (−2.30) = 2.08</div>
   <p>m dương: model nghiêng về "are". m âm: nghiêng về "is".</p>
   <h3>Paper dùng để làm gì</h3>
   <p>Node quan trọng là node mà khi đổi giá trị thì m đổi nhiều. Mỗi phần của paper dùng một m khác:</p>
   <ul>
-    <li>Section 4 (classifier): <code>m = −log C(y | x)</code>.</li>
-    <li>Section 5 (unsupervised): <code>m = −log P(yᵢ | xᵢ)</code>.</li>
+    <li>Section 4 (classifier): <code>m = −log C(y | x)</code> (C: classifier, y: nhãn đúng, x: input; <code>|</code> đọc là "khi biết").</li>
+    <li>Section 5 (unsupervised): <code>m = −log P(yᵢ | xᵢ)</code> (xᵢ: đoạn text thứ i, yᵢ: token tiếp theo đúng của nó).</li>
   </ul>
   <div class="next">Cần biết tiếp: <b>cặp input dùng để đo</b>.</div>
 </section>
@@ -380,14 +390,14 @@ P(are) = 0.8, P(is) = 0.1  →  m = −0.22 − (−2.30) = 2.08</div>
   <h3>Bối cảnh</h3>
   <p>Chạy một câu thì rất nhiều node bật (ngữ pháp, nghĩa của "teacher"…). Cần cách lọc ra những node liên quan tới đúng một yếu tố.</p>
   <h3>Là gì</h3>
-  <p>Hai input giống nhau, chỉ khác đúng yếu tố cần nghiên cứu.</p>
+  <p>Hai input giống nhau, chỉ khác đúng yếu tố cần nghiên cứu: <code>x_clean</code> (câu gốc) và <code>x_patch</code> (câu đã đổi yếu tố).</p>
   <div class="eq">x_clean = "The boy near the teacher"    → has
 x_patch = "The boys near the teacher"   → have
 
 node "teacher":  3.0  vs 3.0   → không đổi, bỏ qua
 node "số nhiều": 0.1  vs 2.5   → đổi, đáng xét</div>
   <h3>Paper dùng để làm gì</h3>
-  <p>Giá trị của node khi chạy <code>x_patch</code> được dùng để thay vào lần chạy <code>x_clean</code> (slide sau).</p>
+  <p>Giá trị của node khi chạy <code>x_patch</code> (câu đã đổi yếu tố) được dùng để thay vào lần chạy <code>x_clean</code> (slide sau).</p>
   <div class="next">Cần biết tiếp: <b>activation patching</b>.</div>
 </section>
 
@@ -399,13 +409,13 @@ node "số nhiều": 0.1  vs 2.5   → đổi, đáng xét</div>
   <p>Node có giá trị khác nhau giữa hai câu chưa chắc là model dùng nó. Muốn biết chắc thì phải tự tay đổi giá trị node rồi xem output.</p>
   <h3>Là gì</h3>
   <ol>
-    <li>Chạy <code>x_patch</code>, lưu giá trị node a: <code>a_patch</code>.</li>
+    <li>Chạy <code>x_patch</code>, lưu giá trị node a: <code>a_patch</code> (giá trị của a khi chạy x_patch).</li>
     <li>Chạy <code>x_clean</code>, tới node a thì <b>ghi đè</b> bằng <code>a_patch</code>. Các layer sau tính tiếp bình thường.</li>
     <li>Đo m.</li>
   </ol>
   <div class="flow"><span>"The boy …"</span><i>→</i><span>layer 1</span><i>→</i><span>node a ← a_patch</span><i>→</i><span>layer 3…6</span><i>→</i><span>m = ?</span></div>
   <h3>Paper dùng để làm gì</h3>
-  <p>Chỉ a bị đổi, nên nếu m đổi thì nguyên nhân là a. Đây là kết luận causal. Ký hiệu <code>do(a = a_patch)</code> nghĩa là "gán a bằng giá trị này".</p>
+  <p>Chỉ a bị đổi, nên nếu m đổi thì nguyên nhân là a. Đây là kết luận causal. Ký hiệu <code>do(a = a_patch)</code> (do: phép can thiệp) nghĩa là "gán a bằng giá trị này".</p>
   <div class="next">Cần biết tiếp: <b>indirect effect</b>, con số tóm tắt kết quả patching.</div>
 </section>
 
@@ -416,7 +426,7 @@ node "số nhiều": 0.1  vs 2.5   → đổi, đáng xét</div>
   <h3>Bối cảnh</h3>
   <p>Patching cho ra một m mới. Cần một con số cho biết m đổi bao nhiêu.</p>
   <h3>Là gì</h3>
-  <div class="eq">IE = m(x_clean khi patch a) − m(x_clean)
+  <div class="eq">IE = m(x_clean khi patch a) − m(x_clean)     # IE (indirect effect), m(·) (metric khi chạy input đó)
 
 node a:  m từ 2.0 xuống −0.5  →  IE = −2.5   (quan trọng)
 node b:  m từ 2.0 xuống  1.9  →  IE = −0.1   (gần như không)</div>
@@ -451,7 +461,7 @@ node b:  m từ 2.0 xuống  1.9  →  IE = −0.1   (gần như không)</div>
   <p>Tính IE chính xác cần một lần chạy cho mỗi node, tức hàng triệu lần chạy. Không làm nổi.</p>
   <h3>Là gì</h3>
   <p>Ước lượng IE bằng gradient: m đổi bao nhiêu khi a tăng 1, nhân với a thay đổi bao nhiêu.</p>
-  <div class="eq">IE ≈ ∇ₐm · (a_patch − a_clean)
+  <div class="eq">IE ≈ ∇ₐm · (a_patch − a_clean)     # ∇ₐm (đọc "nabla a m": gradient của m theo a)
 
 ∇ₐm = −1.2,  a_patch − a_clean = 2.0  →  IE ≈ −2.4</div>
   <p>Chi phí: 2 forward (clean, patch) + 1 backward là có IE của <b>mọi</b> node.</p>
@@ -465,9 +475,9 @@ node b:  m từ 2.0 xuống  1.9  →  IE = −0.1   (gần như không)</div>
   <h2>Integrated gradients (IG)</h2>
   <div class="en">Equation (4) · Sundararajan et al. 2017</div>
   <h3>Bối cảnh</h3>
-  <p>AtP chỉ lấy gradient tại một điểm (<code>a_clean</code>), nên sai khi m cong.</p>
+  <p>AtP (attribution patching) chỉ lấy gradient tại một điểm (<code>a_clean</code>: giá trị của a khi chạy x_clean), nên sai khi m cong.</p>
   <h3>Là gì</h3>
-  <p>Lấy gradient tại N = 10 điểm trên đoạn từ <code>a_clean</code> tới <code>a_patch</code>, rồi lấy trung bình.</p>
+  <p>IG (integrated gradients) lấy gradient tại N (số điểm) = 10 điểm trên đoạn từ <code>a_clean</code> tới <code>a_patch</code>, rồi lấy trung bình.</p>
   <div class="eq">giả sử m = a²,  a_clean = 0,  a_patch = 2   →  IE thật = 4
 
 AtP: gradient tại 0 là 0         →  IE ≈ 0     (sai)
@@ -487,6 +497,7 @@ IG:  gradient trung bình là 2.2  →  IE ≈ 4.4   (gần 4)</div>
   <h3>Là gì</h3>
   <p>Tại mỗi vị trí có SAE, viết lại activation:</p>
   <div class="eq">x  =  f₁·v₁ + f₂·v₂ + … + f_N·v_N + b + ε</div>
+  <p class="note">Ký hiệu: <code>fᵢ</code> (feature activation i), <code>vᵢ</code> (feature i), <code>N</code> (số feature của SAE, Pythia 32 768), <code>b</code> (bias decoder), <code>ε</code> (SAE error).</p>
   <p>Đẳng thức đúng tuyệt đối nên output không đổi. Nhưng giờ <code>fᵢ</code> và <code>ε</code> là giá trị trung gian, nên patch hay lấy gradient theo chúng được.</p>
   <ul>
     <li><b>Node</b>: một <code>fᵢ</code> hoặc một <code>ε</code>, tại một token, ở một SAE.</li>
@@ -505,12 +516,13 @@ IG:  gradient trung bình là 2.2  →  IE ≈ 4.4   (gần 4)</div>
   <ol>
     <li><b>Cache.</b> Chạy <code>x_clean</code> và <code>x_patch</code>, lưu mọi <code>fᵢ</code>, <code>ε</code> và m.</li>
     <li><b>Backward.</b> Lấy gradient của m theo từng <code>fᵢ</code>, <code>ε</code>.</li>
-    <li><b>Lọc node.</b> Tính IE (AtP hoặc IG), lấy trung bình trên dataset, giữ node có <code>|IE| &gt; T_N</code>.</li>
-    <li><b>Lọc edge.</b> Chỉ xét edge giữa các node còn lại, giữ edge có <code>|IE| &gt; T_E</code>.</li>
+    <li><b>Lọc node.</b> Tính IE (AtP hoặc IG), lấy trung bình trên dataset, giữ node có <code>|IE| &gt; T_N</code> (|IE|: trị tuyệt đối của IE, T_N: ngưỡng cho node).</li>
+    <li><b>Lọc edge.</b> Chỉ xét edge giữa các node còn lại, giữ edge có <code>|IE| &gt; T_E</code> (T_E: ngưỡng cho edge).</li>
   </ol>
   <h3>IE của edge (App. A.1)</h3>
   <p>Edge u → d: phần ảnh hưởng của u lên m mà đi qua d. Tính bằng chain rule:</p>
   <div class="eq">IE(u → d) ≈ ∇_d m · ∇_u d · (u_patch − u_clean)</div>
+  <p class="note">Ký hiệu: <code>u</code> (node upstream, phía trước), <code>d</code> (node downstream, phía sau), <code>∇_d m</code> (gradient của m theo d), <code>∇_u d</code> (gradient của d theo u), <code>u_patch − u_clean</code> (u đổi bao nhiêu giữa hai câu).</p>
   <div class="next">Cần biết tiếp: <b>chọn ngưỡng</b> và gộp nhiều câu.</div>
 </section>
 
@@ -560,6 +572,7 @@ IG:  gradient trung bình là 2.2  →  IE ≈ 4.4   (gần 4)</div>
 
 m(M) = 3.0 (cả model),  m(∅) = 0 (ablate hết),  m(C) = 2.4
 → faithfulness = 0.8     lý tưởng = 1</div>
+  <p class="note">Ký hiệu: <code>C</code> (circuit), <code>M</code> (model đầy đủ), <code>∅</code> (đọc "tập rỗng": ablate mọi node), <code>m(C)</code> (metric khi chỉ giữ circuit).</p>
   <h3>Completeness</h3>
   <p>Ngược lại: ablate các node <em>trong</em> C, giữ phần còn lại. Lý tưởng = 0, tức là bỏ circuit đi thì model không làm được task.</p>
   <h3>Kết quả</h3>
@@ -693,6 +706,7 @@ m(M) = 3.0 (cả model),  m(∅) = 0 (ablate hết),  m(C) = 2.4
   <h3>Là gì</h3>
   <p>Mỗi cặp (xᵢ, yᵢ) được gán vector là gradient theo tham số của model:</p>
   <div class="eq">gᵢ = ∇_θ log P(yᵢ | xᵢ)</div>
+  <p class="note">Ký hiệu: <code>gᵢ</code> (vector gradient của đoạn text i), <code>∇_θ</code> (gradient theo θ, ở đây θ là toàn bộ tham số của model), <code>P(yᵢ | xᵢ)</code> (xác suất model đoán đúng token tiếp theo yᵢ khi biết xᵢ).</p>
   <p>Hai dự đoán có gradient giống nhau thì dựa vào cùng nhóm tham số, nên nhiều khả năng dùng chung một cơ chế. Paper gom cụm bằng spectral clustering. Michaud et al. gọi mỗi cụm là một "quantum".</p>
   <h3>Ví dụ (Figure 5)</h3>
   <ul>

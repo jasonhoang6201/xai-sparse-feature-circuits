@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Node, IE và error node</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f7f6f2;--card:#fff;--ink:#1d1d1f;--mute:#6b6b70;--line:#dcdad3;--hi:#c0392b;--hibg:#fdecea;--grn:#1e8449;--grnbg:#e8f6ee;--blu:#2464a8;--blubg:#e8f0fa}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Be Vietnam Pro",sans-serif;line-height:1.55}
+main{max-width:1100px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:24px;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 16px}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px}
+code,.mono{font-family:"JetBrains Mono",monospace;font-size:14px}
+.pipe{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.pipe span{border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:13px;cursor:pointer;color:var(--mute);background:#fff}
+.pipe span.on{background:var(--hi);border-color:var(--hi);color:#fff;font-weight:600}
+.pipe span.done{color:var(--ink);border-color:#bbb}
+.nav{display:flex;gap:10px;margin-bottom:14px}
+.nav button{font:inherit;font-size:15px;padding:7px 16px;border-radius:8px;border:2px solid var(--ink);background:#fff;cursor:pointer}
+.nav button:disabled{opacity:.3;cursor:default}
+.slide{display:none}
+.slide.on{display:block}
+.slide h2{font-size:20px;margin:0 0 10px}
+.explain{border-left:4px solid var(--hi);background:var(--hibg);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0}
+.ok{border-left-color:var(--grn);background:var(--grnbg)}
+.flow{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;margin:12px 0}
+.box{border:2px solid var(--ink);border-radius:10px;padding:10px 12px;background:#fff;min-width:150px}
+.box.red{border-color:var(--hi);background:var(--hibg)}
+.box.grn{border-color:var(--grn);background:var(--grnbg)}
+.box.blu{border-color:var(--blu);background:var(--blubg)}
+.box.dash{border-style:dashed;color:var(--mute)}
+.box b{display:block;font-size:14px}
+.arr{align-self:center;font-size:22px;color:var(--mute)}
+table{border-collapse:collapse;margin:10px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:6px 10px;text-align:left}
+th{background:#f1efe9}
+td.n{font-family:"JetBrains Mono",monospace;text-align:right}
+tr.keep td{background:var(--grnbg)}
+tr.drop td{color:var(--mute)}
+tr.sel td{background:var(--hibg)}
+.tri{color:var(--hi);font-weight:700}
+.scroll{overflow-x:auto}
+.note{color:var(--mute);font-size:14px}
+</style>
+</head>
+<body>
+<main>
+<h1>Từ một câu đến node, IE (indirect effect) và error node</h1>
+<p class="sub">Model thu nhỏ, đã giảm chiều cho dễ hiểu: mỗi vector x (activation tại một chỗ đọc) có <b>4 số</b> (Pythia-70M: 512), SAE có <b>6 feature</b> (Pythia: 32 768). Bias decoder b lấy bằng 0 cho gọn. Các giá trị m (metric) sau khi sửa node là số minh họa. Dùng ← → để chuyển bước.</p>
+
+<section>
+  <div class="pipe" id="pipe"></div>
+  <div class="nav"><button id="prev">← Trước</button><button id="next">Tiếp →</button></div>
+
+  <!-- 1 -->
+  <div class="slide">
+    <h2>Bước 1. Chọn hai câu và một metric m</h2>
+    <div class="flow">
+      <div class="box"><b>x_clean (câu gốc)</b><span class="mono">"The teacher"</span><br>model nên đoán "is"</div>
+      <div class="box"><b>x_patch (câu đối chứng)</b><span class="mono">"The teachers"</span><br>model nên đoán "are"</div>
+    </div>
+    <div class="explain">
+      <span class="mono">m(x) = log P("are" | x) − log P("is" | x)</span><br>
+      m (metric, một con số đo hành vi); P (xác suất model đoán ra từ đó); x (câu đưa vào).<br>
+      Chạy model gốc: <span class="mono">m(x_clean) = −3.0</span> (nghiêng về "is"), <span class="mono">m(x_patch) = +3.0</span> (nghiêng về "are").<br>
+      Hai câu chỉ khác nhau ở số ít / số nhiều, nên node nào làm m đổi khi chuyển từ câu này sang câu kia thì node đó tham gia vào việc chọn "is" / "are".
+    </div>
+    <p class="note">Ví dụ và công thức m lấy theo paper (trang 3, Eq. 2). Giá trị −3.0 / +3.0 là minh họa.</p>
+  </div>
+
+  <!-- 2 -->
+  <div class="slide">
+    <h2>Bước 2. Chạy model, đọc x tại một chỗ gắn SAE</h2>
+    <div class="flow">
+      <div class="box">embedding</div><div class="arr">→</div>
+      <div class="box">layer 1</div><div class="arr">→</div>
+      <div class="box">layer 2</div><div class="arr">→</div>
+      <div class="box red"><b>layer 3, residual stream</b>token "teacher"<br><span class="mono">x = [2.0, 0.1, 1.5, −0.4]</span></div><div class="arr">→</div>
+      <div class="box">layer 4 … 6</div><div class="arr">→</div>
+      <div class="box">unembedding → m</div>
+    </div>
+    <div class="explain">Đây chỉ là <b>một</b> chỗ đọc. Pythia có 19 chỗ gắn SAE (6 layer × 3 chỗ là attention output, MLP output, residual stream, cộng thêm embedding), và ở mỗi token position đều đọc. Các bước sau làm giống nhau ở mọi chỗ đọc và mọi token.</div>
+  </div>
+
+  <!-- 3 -->
+  <div class="slide">
+    <h2>Bước 3. SAE tách x thành feature và error</h2>
+    <div class="scroll"><table>
+      <tr><th>feature i</th><th>tên (đặt sau khi train)</th><th>vᵢ (cột i của W_dec)</th><th>fᵢ (activation) câu clean</th><th>fᵢ câu patch</th></tr>
+      <tr><td>1</td><td>singular noun</td><td class="n">[1, 0, 0, 0]</td><td class="n">2.0</td><td class="n">0</td></tr>
+      <tr><td>2</td><td>plural noun</td><td class="n">[0, 1, 0, 0]</td><td class="n">0</td><td class="n">1.9</td></tr>
+      <tr><td>3</td><td>profession word</td><td class="n">[0, 0, 1, 0]</td><td class="n">1.5</td><td class="n">1.5</td></tr>
+      <tr><td>4 … 6</td><td>…</td><td class="n">…</td><td class="n">0</td><td class="n">0</td></tr>
+    </table></div>
+    <div class="explain mono">
+      x̂ = W_dec · f + b = 2.0·v₁ + 1.5·v₃ = [2.0, 0, 1.5, 0]<br>
+      ε  = x − x̂ = [2.0, 0.1, 1.5, −0.4] − [2.0, 0, 1.5, 0] = [0, 0.1, 0, −0.4]<br>
+      x̂ + ε = x (đúng chính xác)
+    </div>
+    <p class="note">x̂ (x do SAE tái tạo); W_dec (weight decoder); f (vector các fᵢ); ε (SAE error). Câu patch tính tương tự: x = [0.1, 1.9, 1.5, −0.3], x̂ = [0, 1.9, 1.5, 0], ε_patch = [0.1, 0, 0, −0.3].</p>
+  </div>
+
+  <!-- 4 -->
+  <div class="slide">
+    <h2>Bước 4. Mỗi thành phần là một node</h2>
+    <div class="flow">
+      <div class="box blu"><b>node f₁</b>1 số: 2.0</div>
+      <div class="box blu"><b>node f₂</b>1 số: 0</div>
+      <div class="box blu"><b>node f₃</b>1 số: 1.5</div>
+      <div class="box blu"><b>node f₄ … f₆</b>mỗi node 1 số</div>
+      <div class="box red"><b><span class="tri">▲</span> node ε</b>cả vector 4 số<br><span class="mono">[0, 0.1, 0, −0.4]</span></div>
+    </div>
+    <div class="explain">Tại chỗ đọc (layer 3 residual, token "teacher") có 6 feature node + 1 error node. Ở Pythia là 32 768 + 1. Chỗ đọc khác hoặc token khác có bộ node riêng.<br>Paper vẽ feature node bằng hình chữ nhật và error node bằng hình tam giác (▲).</div>
+  </div>
+
+  <!-- 5 -->
+  <div class="slide">
+    <h2>Bước 5. Sửa một node, cho model chạy tiếp, đo m</h2>
+    <div class="flow">
+      <div class="box"><b>chạy câu clean tới layer 3</b></div><div class="arr">→</div>
+      <div class="box red"><b>do(f₁ = f₁_patch)</b>f₁: 2.0 → 0<br>các node khác giữ giá trị clean</div><div class="arr">→</div>
+      <div class="box"><b>decoder đổi về x</b><span class="mono">x_mới = W_dec·f_mới + b + ε<br>= [0, 0, 1.5, 0] + [0, 0.1, 0, −0.4]<br>= [0, 0.1, 1.5, −0.4]</span></div><div class="arr">→</div>
+      <div class="box"><b>layer 4 … 6, unembedding</b>nhận x_mới thay cho x</div><div class="arr">→</div>
+      <div class="box grn"><b>m = −0.8</b>trước khi sửa là −3.0</div>
+    </div>
+    <div class="explain">
+      do(·) (gán cứng giá trị của node, ghi đè giá trị model tự tính). f₁_patch (giá trị f₁ khi chạy câu patch).<br>
+      Đây là bước "đưa feature đã sửa vào model": layer 4 không nhận f, chỉ nhận x, nên decoder phải đổi f_mới về x_mới. ε giữ nguyên giá trị clean, nên phần thay đổi của x chỉ đến từ f₁.
+    </div>
+  </div>
+
+  <!-- 6 -->
+  <div class="slide">
+    <h2>Bước 6. IE (indirect effect) = m thay đổi bao nhiêu</h2>
+    <div class="explain mono">IE(m; a) = m(x_clean | do(a = a_patch)) − m(x_clean)</div>
+    <p class="note">a (node đang xét); a_patch (giá trị của a khi chạy câu patch); m(x_clean | do(·)) (m khi chạy câu clean nhưng gán cứng a). Công thức Eq. 2, trang 3 của paper.</p>
+    <div class="scroll"><table>
+      <tr><th>node a (layer 3 resid, "teacher")</th><th>a_clean → a_patch</th><th>m sau khi sửa</th><th>IE = m − (−3.0)</th></tr>
+      <tr class="sel"><td>f₁ singular noun</td><td class="n">2.0 → 0</td><td class="n">−0.8</td><td class="n">+2.2</td></tr>
+      <tr><td>f₂ plural noun</td><td class="n">0 → 1.9</td><td class="n">−1.2</td><td class="n">+1.8</td></tr>
+      <tr><td>f₃ profession word</td><td class="n">1.5 → 1.5</td><td class="n">−3.0</td><td class="n">0</td></tr>
+      <tr><td><span class="tri">▲</span> ε</td><td class="n">[0,0.1,0,−0.4] → [0.1,0,0,−0.3]</td><td class="n">−2.9</td><td class="n">+0.1</td></tr>
+    </table></div>
+    <div class="explain">Mỗi node sửa riêng một lần, các node khác giữ nguyên. IE lớn (về trị tuyệt đối) nghĩa là chỉ cần đổi node đó thì m đổi nhiều, tức node đó là nguyên nhân của một phần hành vi. f₃ có giá trị giống nhau ở hai câu nên đổi qua đổi lại cũng không làm m thay đổi, IE = 0. Error node ε được sửa y như feature node: thay cả vector ε_clean bằng ε_patch.<br>Paper không chạy lại model cho từng node mà dùng gradient để ước lượng IE (AtP, IG ở slide 20–21). Ý nghĩa của IE không đổi.</div>
+  </div>
+
+  <!-- 7 -->
+  <div class="slide">
+    <h2>Bước 7. Làm cho mọi chỗ đọc, mọi token, rồi lọc theo ngưỡng T_N</h2>
+    <div class="scroll"><table>
+      <tr><th>node</th><th>chỗ đọc, token</th><th>|IE|</th><th>|IE| &gt; T_N = 1.0 ?</th></tr>
+      <tr class="keep"><td>f₁ singular noun</td><td>layer 3 resid, "teacher"</td><td class="n">2.2</td><td>giữ</td></tr>
+      <tr class="keep"><td>f₂ plural noun</td><td>layer 3 resid, "teacher"</td><td class="n">1.8</td><td>giữ</td></tr>
+      <tr class="keep"><td><span class="tri">▲</span> ε</td><td>layer 1 resid, "teacher"</td><td class="n">1.5</td><td>giữ</td></tr>
+      <tr class="drop"><td>f₃ profession word</td><td>layer 3 resid, "teacher"</td><td class="n">0</td><td>bỏ</td></tr>
+      <tr class="drop"><td><span class="tri">▲</span> ε</td><td>layer 3 resid, "teacher"</td><td class="n">0.1</td><td>bỏ</td></tr>
+      <tr class="drop"><td>… hàng triệu node khác</td><td>…</td><td class="n">≈ 0</td><td>bỏ</td></tr>
+    </table></div>
+    <div class="explain">T_N (ngưỡng node) do người nghiên cứu chọn. Các node được giữ, cùng các edge giữa chúng (slide 22–24), tạo thành circuit. Circuit RC (relative clause) của Pythia có 86 node.</div>
+  </div>
+
+  <!-- 8 -->
+  <div class="slide">
+    <h2>Bước 8. Error node có IE lớn hay nhỏ nghĩa là gì</h2>
+    <div class="flow">
+      <div class="box grn" style="flex:1"><b><span class="tri">▲</span> ε layer 3 resid: IE = 0.1 (nhỏ)</b>Phần SAE chưa tái tạo được ở chỗ này hầu như không ảnh hưởng tới m. Phần thông tin model dùng cho việc chọn "is" / "are" ở chỗ này đã nằm trong các feature (f₁, f₂). Circuit giải thích được chỗ này bằng các feature có tên.</div>
+      <div class="box red" style="flex:1"><b><span class="tri">▲</span> ε layer 1 resid: IE = 1.5 (lớn)</b>Một phần thông tin model dùng để chọn "is" / "are" đi qua phần SAE chưa tái tạo được. Ở chỗ này circuit có một node mà không ai đọc được nội dung. Paper vẫn giữ node này trong circuit và vẽ bằng ▲.</div>
+    </div>
+    <div class="explain">
+      <b>Giữ error node để làm gì:</b><br>
+      1. Biết circuit giải thích được bao nhiêu. Nếu circuit có nhiều ▲ với IE lớn, phần lớn hành vi đi qua chỗ chưa đọc được, và kết luận "model dùng các feature này" chỉ đúng một phần. Paper ghi: các error node là "error components not yet captured by our SAEs" (trang 3).<br>
+      2. Đo faithfulness công bằng. Khi bỏ hết error node ở residual stream, model bị "severely disrupts" (trang 7); bỏ error node ở attention / MLP thì ảnh hưởng ít hơn. Hệ quả là SAE ở residual stream bỏ sót nhiều thông tin mà model dùng.<br>
+      3. Đặt nhãn cho ▲ dựa vào vị trí. Paper không đọc được nội dung ▲ nên đặt nhãn theo vị trí của nó hoặc theo nhóm feature xung quanh; nếu không rõ thì để ▲ ngoài các nhóm (chú thích Figure 4).
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 style="font-size:18px;margin:0 0 8px">Ký hiệu</h2>
+  <p class="mono" style="margin:0">x (activation tại chỗ đọc) · x̂ (x do SAE tái tạo) · ε (SAE error = x − x̂) · fᵢ (activation của feature i) · vᵢ (hướng của feature i, cột i của W_dec) · W_dec (weight decoder) · b (bias decoder) · m (metric) · P (xác suất) · do(·) (gán cứng giá trị node) · IE (indirect effect) · T_N (ngưỡng node)</p>
+</section>
+</main>
+
+<script>
+const NAMES = ['Hai câu, metric m','Đọc x','SAE tách x','Node','Sửa 1 node','IE','Lọc T_N','Error node'];
+const slides = [...document.querySelectorAll('.slide')];
+const pipe = document.getElementById('pipe');
+let cur = 0;
+NAMES.forEach((n, i) => {
+  const s = document.createElement('span');
+  s.textContent = (i + 1) + '. ' + n;
+  s.onclick = () => go(i);
+  pipe.appendChild(s);
+});
+function go(i){
+  cur = Math.max(0, Math.min(slides.length - 1, i));
+  slides.forEach((s, k) => s.classList.toggle('on', k === cur));
+  [...pipe.children].forEach((s, k) => { s.classList.toggle('on', k === cur); s.classList.toggle('done', k < cur); });
+  document.getElementById('prev').disabled = cur === 0;
+  document.getElementById('next').disabled = cur === slides.length - 1;
+}
+document.getElementById('prev').onclick = () => go(cur - 1);
+document.getElementById('next').onclick = () => go(cur + 1);
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); go(cur + 1); }
+  if (e.key === 'ArrowLeft') go(cur - 1);
+});
+go(0);
+</script>
+</body>
+</html>
